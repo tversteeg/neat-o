@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #include <neat.h>
 
-static double inputs[4][2] = {{0.0, 0.0}, {0.0, 1.0}, {1.0, 0.0}, {1.0, 1.0}};
-static double outputs[4] = {0.0, 1.0, 1.0, 0.0};
+static double xor_inputs[4][2] = {{0.0, 0.0}, {0.0, 1.0}, {1.0, 0.0}, {1.0, 1.0}};
+static double xor_outputs[4] = {0.0, 1.0, 1.0, 0.0};
 
+#if 0
 static void eval_genomes(neat_genome_t *genomes)
 {
 	neat_genome_t genome;
@@ -49,6 +52,38 @@ int main(int argc, char *argv[])
 		printf("Output %d: expected %f, got %f.\n",
 		       i, outputs[i], output_val);
 	}
+
+	return 0;
+}
+#endif
+
+static double calculate_fitness(double *outputs)
+{
+	double fitness = 0.0;
+
+	for(int i = 0; i < 4; i++){
+		fitness += outputs[i] - xor_outputs[i];
+	}
+	
+	return fitness / 4.0;
+}
+
+int main(int argc, char *argv[])
+{
+	/* Initialize random numbers */
+	srand(time(NULL));
+
+	struct neat_config conf = {
+		.fitness_criterion = NEAT_FITNESS_CRITERION_MEAN,
+		.input_genome_topo = 2,
+		.output_genome_topo = 1,
+
+		.population_size = 100
+	};
+
+	neat_pop_t pop = neat_population_create(conf);
+
+	neat_run(pop, calculate_fitness, 100);
 
 	return 0;
 }

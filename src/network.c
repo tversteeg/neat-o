@@ -4,24 +4,30 @@
 
 #include "population.h"
 
-static void neat_neuron_add_input_gene(struct neat_neuron *neuron,
-				       struct neat_gene *input)
+static void neat_neuron_add_input_gene(struct neat_ffnet *net,
+				       size_t gene_offset,
+				       size_t neuron_offset)
 {
-	size_t bytes = sizeof(struct neat_gene) * (neuron->ninput_genes + 1);
-	neuron->input_genes = realloc(neuron->input_genes, bytes);
+	struct neat_neuron *n = net->neurons + neuron_offset;
 
-	neuron->input_genes[neuron->ninput_genes] = input;
-	neuron->ninput_genes++;
+	size_t bytes = sizeof(size_t) * (n->ninput_genes + 1);
+	n->input_genes = realloc(n->input_genes, bytes);
+
+	n->input_genes[n->ninput_genes] = gene_offset;
+	n->ninput_genes++;
 }
 
-static void neat_neuron_add_output_gene(struct neat_neuron *neuron,
-					struct neat_gene *output)
+static void neat_neuron_add_output_gene(struct neat_ffnet *net,
+					size_t gene_offset,
+					size_t neuron_offset)
 {
-	size_t bytes = sizeof(struct neat_gene) * (neuron->noutput_genes + 1);
-	neuron->output_genes = realloc(neuron->output_genes, bytes);
+	struct neat_neuron *n = net->neurons + neuron_offset;
 
-	neuron->output_genes[neuron->noutput_genes] = output;
-	neuron->noutput_genes++;
+	size_t bytes = sizeof(size_t) * (n->noutput_genes + 1);
+	n->output_genes = realloc(n->output_genes, bytes);
+
+	n->output_genes[n->noutput_genes] = gene_offset;
+	n->noutput_genes++;
 }
 
 static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net, int id,
@@ -42,73 +48,120 @@ static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net, int id,
 	return neuron;
 }
 
-struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
-				      struct neat_neuron *input,
-				      struct neat_neuron *output,
-				      double weight, bool enabled)
+static struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
+				      	     int neuron_input_offset,
+				      	     int neuron_output_offset,
+				      	     double weight, bool enabled)
 {
 	size_t bytes = sizeof(struct neat_gene) * (net->ngenes + 1);
 	net->genes = realloc(net->genes, bytes);
 
 	struct neat_gene *gene = net->genes + net->ngenes;
 	*gene = (struct neat_gene){
-		.input = input,
-		.output = output,
+		.neuron_input = neuron_input_offset,
+		.neuron_output = neuron_output_offset,
 		.weight = weight,
 		.enabled = enabled
 	};
 
-	neat_neuron_add_input_gene(input, gene);
-	neat_neuron_add_output_gene(output, gene);
+	neat_neuron_add_input_gene(net, neuron_input_offset, net->ngenes);
+	neat_neuron_add_output_gene(net, neuron_output_offset, net->ngenes);
 
 	net->ngenes++;
 
 	return gene;
 }
 
-neat_ffnet_t neat_ffnet_create(neat_pop_t population)
+struct neat_ffnet neat_ffnet_create(struct neat_config config)
 {
-	struct neat_pop *p = population;
+	int ninputs = config.input_genome_topo;
+	int noutputs = config.output_genome_topo;
 
-	int ninputs = p->conf.input_genome_topo;
-	int noutputs = p->conf.output_genome_topo;
+	struct neat_ffnet net = {
+		.species_id = -1,
+		.generation = 0,
 
-	struct neat_ffnet *net = malloc(sizeof(struct neat_ffnet));
+		.output_offset = ninputs,
+		.hidden_offset = ninputs + noutputs
+	};
 
 	int neuron_id = 0;
-	int i;
-	for(i = 0; i < ninputs; i++){
-		neat_ffnet_add_neuron(net, neuron_id++, NEAT_NEURON_INPUT);
-	}
-	for(i = 0; i < noutputs; i++){
-		neat_ffnet_add_neuron(net, neuron_id++, NEAT_NEURON_OUTPUT);
+	for(int i = 0; i < ninputs; i++){
+		neat_ffnet_add_neuron(&net, neuron_id++, NEAT_NEURON_INPUT);
 	}
 
-	for(i = 0; i < ninputs; i++){
-		struct neat_neuron *input = net->neurons + i;
+	for(int i = 0; i < noutputs; i++){
+		neat_ffnet_add_neuron(&net, neuron_id++, NEAT_NEURON_OUTPUT);
+	}
 
-		int j;
-		for(j = 0; j < noutputs; j++){
-			struct neat_neuron *output = net->neurons + ninputs + i;
-
-			neat_ffnet_add_gene(net, input, output, 0.0, true);
+	for(int i = 0; i < ninputs; i++){
+		for(int j = 0; j < noutputs; j++){
+			int index = net.output_offset + j;
+			neat_ffnet_add_gene(&net, i, index, 0.0, true);
 		}
 	}
+
+	neat_ffnet_randomize_weights(&net);
 
 	return net;
 }
 
-neat_ffnet_t neat_ffnet_activate(neat_ffnet_t net, double* inputs, int ninputs)
+struct neat_ffnet neat_ffnet_copy(struct neat_ffnet *src)
 {
-	return NULL;
+	struct neat_ffnet dest = *src;
+
+	dest.neurons = malloc(sizeof(struct neat_neuron) * dest.nneurons);
+	for(int i = 0; i < dest.nneurons; i++){
+		struct neat_neuron *n_dest = dest.neurons + i;
+		struct neat_neuron *n_src = src->neurons + i;
+		*n_dest = *n_src;
+		
+		size_t bytes = sizeof(size_t) * n_dest->ninput_genes;
+		n_dest->input_genes = malloc(bytes);
+		for(int j = 0; j < n_dest->ninput_genes; j++){
+			n_dest->input_genes[j] = n_src->input_genes[j];
+		}
+
+		bytes = sizeof(size_t) * n_dest->noutput_genes;
+		n_dest->output_genes = malloc(bytes);
+		for(int j = 0; j < n_dest->noutput_genes; j++){
+			n_dest->output_genes[j] = n_src->output_genes[j];
+		}
+	}
+
+	dest.genes = malloc(sizeof(struct neat_gene) * dest.ngenes);
+	for(int i = 0; i < dest.ngenes; i++){
+		dest.genes[i] = src->genes[i];
+	}
+
+	return dest;
 }
 
-int neat_ffnet_get_outputs(neat_ffnet_t net, double **outputs)
+void neat_ffnet_randomize_weights(struct neat_ffnet *net)
 {
-	return 0;
+	for(int i = 0; i < net->ngenes; i++){
+		/* Random double between -2 and 2 */
+		double random = (double)rand() / RAND_MAX * 4.0 - 2.0;
+		net->genes[i].weight = random;
+	}
 }
 
-double neat_ffnet_get_output_at_index(neat_ffnet_t net, int index)
+double *neat_ffnet_get_outputs(struct neat_ffnet *net)
 {
-	return 0.0;
+	if(!net){
+		fprintf(stderr, "Network for species %d is NULL\n",
+			net->species_id);
+		return NULL;
+	}
+
+	struct neat_neuron *ns = net->neurons + net->output_offset;
+
+	size_t noutputs = net->hidden_offset - net->output_offset;
+	double *outputs = malloc(noutputs * sizeof(double));
+
+	for(int i = 0; i < noutputs; i++){
+		outputs[i] = ns[i].input;
+	}
+
+	return outputs;
 }

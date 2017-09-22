@@ -32,14 +32,7 @@ struct neat_config{
 
 neat_pop_t neat_population_create(struct neat_config config);
 neat_genome_t neat_run(neat_pop_t population,
-		    void(*fitness_func)(neat_genome_t *genomes),
-		    int generations);
+		       double(*fitness_func)(double *outputs),
+		       int generations);
+
 bool neat_is_solved(neat_pop_t population);
-
-neat_ffnet_t neat_ffnet_create(neat_pop_t population);
-neat_ffnet_t neat_ffnet_activate(neat_ffnet_t net, double *inputs, int ninputs);
-
-int neat_ffnet_get_outputs(neat_ffnet_t net, double **outputs);
-double neat_ffnet_get_output_at_index(neat_ffnet_t net, int index);
-
-void neat_genome_decrease_fitness(neat_genome_t genome, double fitness);

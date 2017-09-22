@@ -2,14 +2,16 @@
 
 #include <neat.h>
 
-#include "genome.h"
+#include "network.h"
+#include "species.h"
 
 struct neat_pop{
 	struct neat_config conf;
 
 	bool solved;
 
-	int input_genome_topo, output_genome_topo;
+	struct neat_ffnet initial_genome;
 
-	struct neat_genome **genomes, *best_genome;
+	struct neat_species *species;
+	int nspecies;
 };

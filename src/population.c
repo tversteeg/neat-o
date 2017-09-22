@@ -2,74 +2,19 @@
 
 #include <stdlib.h>
 
-static void neat_set_best_genome(struct neat_pop *p)
+#include "network.h"
+#include "species.h"
+
+static void neat_create_new_species(struct neat_pop *p)
 {
-	if(!p->genomes){
-		return;
-	}
+	size_t bytes = sizeof(struct neat_species) * (p->nspecies + 1);
+	p->species = realloc(p->species, bytes);
 
-	struct neat_genome *cur, **genomes = p->genomes;
-	while((cur = *genomes)){
-		if(p->best_genome == NULL ||
-		   p->best_genome->fitness < cur->fitness){
-			p->best_genome = cur;
-		}
-		genomes++;
-	}
-}
+	struct neat_species *s = p->species + p->nspecies;
 
-static double neat_get_fitness_criterion_max(struct neat_pop *p)
-{
-	if(!p->genomes){
-		return -1.0;
-	}
+	*s = neat_species_create(p->conf, p->nspecies, &p->initial_genome);
 
-	double f = 0.0;
-	struct neat_genome *cur, **genomes = p->genomes;
-	while((cur = *genomes)){
-		if(f < cur->fitness){
-			f = cur->fitness;
-		}
-		genomes++;
-	}
-
-	return f;
-}
-
-static double neat_get_fitness_criterion_min(struct neat_pop *p)
-{
-	if(!p->genomes){
-		return -1.0;
-	}
-
-	double f = 1.0;
-	struct neat_genome *cur, **genomes = p->genomes;
-	while((cur = *genomes)){
-		if(f > cur->fitness){
-			f = cur->fitness;
-		}
-		genomes++;
-	}
-
-	return f;
-}
-
-static double neat_get_fitness_criterion_mean(struct neat_pop *p)
-{
-	if(!p->genomes){
-		return -1.0;
-	}
-
-	double total = 0.0;
-	int count = 0;
-	struct neat_genome *cur, **genomes = p->genomes;
-	while((cur = *genomes)){
-		total += cur->fitness;
-		count++;
-		genomes++;
-	}
-
-	return total / (double)count;
+	p->nspecies++;
 }
 
 neat_pop_t neat_population_create(struct neat_config config)
@@ -77,43 +22,31 @@ neat_pop_t neat_population_create(struct neat_config config)
 	struct neat_pop *p = malloc(sizeof(struct neat_pop));
 
 	p->conf = config;
+	p->initial_genome = neat_ffnet_create(config);
+
+	p->species = malloc(sizeof(struct neat_species));
+	*p->species = neat_species_create(p->conf, 0, &p->initial_genome);
+	p->nspecies = 1;
 
 	return p;
 }
 
 neat_genome_t neat_run(neat_pop_t population,
-		       void(*fitness_func)(neat_genome_t *genomes),
+		       double(*fitness_func)(double *outputs),
 		       int generations)
 {
 	struct neat_pop *p = population;
 
-	if(!p->genomes){
-		return NULL;
+	for(int gen = 0; gen < generations; gen++){
+		for(int i = 0; i < p->nspecies; i++){
+			struct neat_species *s = p->species + i;
+
+			double avg_fitness;
+			bool solved = neat_species_run(s, fitness_func,
+						       &avg_fitness);
+			neat_species_evolve(s);
+		}
 	}
-
-	int i;
-	for(i = 0; i < generations; i++){
-		fitness_func((neat_genome_t*)p->genomes);
-	}
-
-	neat_set_best_genome(p);
-
-	double f;
-	switch(p->conf.fitness_criterion){
-		case NEAT_FITNESS_CRITERION_MAX:
-			f = neat_get_fitness_criterion_max(p);
-			break;
-		case NEAT_FITNESS_CRITERION_MIN:
-			f = neat_get_fitness_criterion_min(p);
-			break;
-		case NEAT_FITNESS_CRITERION_MEAN:
-			f = neat_get_fitness_criterion_mean(p);
-			break;
-		default:
-			return NULL;
-	}
-
-	p->solved = (f >= p->conf.fitness_treshold);
 
 	return NULL;
 }

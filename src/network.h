@@ -11,7 +11,7 @@ enum neat_neuron_type{
 struct neat_neuron;
 
 struct neat_gene{
-	struct neat_neuron *input, *output;
+	size_t neuron_input, neuron_output;
 
 	bool enabled;
 	double weight;
@@ -21,16 +21,26 @@ struct neat_neuron{
 	int id;
 	enum neat_neuron_type type;
 
-	struct neat_gene **input_genes, **output_genes;
-	int ninput_genes, noutput_genes;
+	size_t *input_genes, *output_genes;
+	size_t ninput_genes, noutput_genes;
 
 	double input;
 };
 
 struct neat_ffnet{
-	struct neat_neuron *neurons, *hidden_neurons;
-	int nneurons, nhidden_neurons;
+	/* The order of the neurons array is: [input, output, hidden] */
+	struct neat_neuron *neurons;
+	size_t nneurons, output_offset, hidden_offset;
 
 	struct neat_gene *genes;
-	int ngenes;
+	size_t ngenes;
+
+	int species_id, generation;
 };
+
+struct neat_ffnet neat_ffnet_create(struct neat_config config);
+struct neat_ffnet neat_ffnet_copy(struct neat_ffnet *net);
+
+void neat_ffnet_randomize_weights(struct neat_ffnet *net);
+
+double *neat_ffnet_get_outputs(struct neat_ffnet *net);
