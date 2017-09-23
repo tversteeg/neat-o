@@ -32,6 +32,7 @@ struct neat_config{
 
 neat_pop_t neat_population_create(struct neat_config config);
 neat_genome_t neat_run(neat_pop_t population,
+		       const double *inputs,
 		       double(*fitness_func)(double *outputs),
 		       int generations);
 

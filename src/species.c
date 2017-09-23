@@ -62,6 +62,7 @@ struct neat_species neat_species_create(struct neat_config config, int id,
 }
 
 bool neat_species_run(struct neat_species *s,
+		      const double *inputs,
 		      double(*fitness_func)(double *outputs),
 		      double *avg_fitness)
 {
@@ -74,8 +75,9 @@ bool neat_species_run(struct neat_species *s,
 	double fitness = 0.0;
 	for(int i = 0; i < s->population; i++){
 		struct neat_ffnet *genome = s->genomes + i;
+		neat_ffnet_set_inputs(genome, inputs);
+
 		double *outputs = neat_ffnet_get_outputs(genome);
-		
 		fitness += fitness_func(outputs);
 		free(outputs);
 	}

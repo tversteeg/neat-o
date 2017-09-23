@@ -43,4 +43,10 @@ struct neat_ffnet neat_ffnet_copy(struct neat_ffnet *net);
 
 void neat_ffnet_randomize_weights(struct neat_ffnet *net);
 
+void neat_ffnet_set_inputs(struct neat_ffnet *net, const double *inputs);
+
 double *neat_ffnet_get_outputs(struct neat_ffnet *net);
+
+size_t neat_ffnet_get_input_size(struct neat_ffnet *net);
+size_t neat_ffnet_get_output_size(struct neat_ffnet *net);
+size_t neat_ffnet_get_hidden_size(struct neat_ffnet *net);

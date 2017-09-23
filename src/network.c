@@ -146,14 +146,15 @@ void neat_ffnet_randomize_weights(struct neat_ffnet *net)
 	}
 }
 
-double *neat_ffnet_get_outputs(struct neat_ffnet *net)
+void neat_ffnet_set_inputs(struct neat_ffnet *net, const double *inputs)
 {
-	if(!net){
-		fprintf(stderr, "Network for species %d is NULL\n",
-			net->species_id);
-		return NULL;
+	for(int i = 0; i < net->output_offset; i++){
+		net->neurons[i].input = inputs[i];
 	}
+}
 
+double *neat_ffnet_get_outputs(struct neat_ffnet *net)
+{	
 	struct neat_neuron *ns = net->neurons + net->output_offset;
 
 	size_t noutputs = net->hidden_offset - net->output_offset;
@@ -164,4 +165,19 @@ double *neat_ffnet_get_outputs(struct neat_ffnet *net)
 	}
 
 	return outputs;
+}
+
+inline size_t neat_ffnet_get_input_size(struct neat_ffnet *net)
+{
+	return net->output_offset;
+}
+
+inline size_t neat_ffnet_get_output_size(struct neat_ffnet *net)
+{
+	return net->hidden_offset - net->output_offset;
+}
+
+inline size_t neat_ffnet_get_hidden_size(struct neat_ffnet *net)
+{
+	return net->nneurons - net->hidden_offset;
 }

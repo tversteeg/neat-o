@@ -32,6 +32,7 @@ neat_pop_t neat_population_create(struct neat_config config)
 }
 
 neat_genome_t neat_run(neat_pop_t population,
+		       const double *inputs,
 		       double(*fitness_func)(double *outputs),
 		       int generations)
 {
@@ -42,7 +43,7 @@ neat_genome_t neat_run(neat_pop_t population,
 			struct neat_species *s = p->species + i;
 
 			double avg_fitness;
-			bool solved = neat_species_run(s, fitness_func,
+			bool solved = neat_species_run(s, inputs, fitness_func,
 						       &avg_fitness);
 			neat_species_evolve(s);
 		}
