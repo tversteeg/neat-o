@@ -32,8 +32,13 @@ struct neat_config{
 
 neat_pop_t neat_population_create(struct neat_config config);
 neat_genome_t neat_run(neat_pop_t population,
-		       const double *inputs,
-		       double(*fitness_func)(double *outputs),
+		       double(*fitness_func)(neat_ffnet_t net),
 		       int generations);
+
+
+void neat_ffnet_predict(neat_ffnet_t network, const double *inputs);
+double *neat_ffnet_get_outputs(neat_ffnet_t network);
+double neat_ffnet_get_output(neat_ffnet_t network, size_t index);
+void neat_ffnet_reset(neat_ffnet_t network);
 
 bool neat_is_solved(neat_pop_t population);

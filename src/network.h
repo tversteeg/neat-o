@@ -25,6 +25,8 @@ struct neat_neuron{
 	size_t ninput_genes, noutput_genes;
 
 	double input;
+	size_t received_inputs;
+	bool sent_output;
 };
 
 struct neat_ffnet{
@@ -36,16 +38,14 @@ struct neat_ffnet{
 	size_t ngenes;
 
 	int species_id, generation;
+
+	double fitness;
 };
 
 struct neat_ffnet neat_ffnet_create(struct neat_config config);
 struct neat_ffnet neat_ffnet_copy(struct neat_ffnet *net);
 
 void neat_ffnet_randomize_weights(struct neat_ffnet *net);
-
-void neat_ffnet_set_inputs(struct neat_ffnet *net, const double *inputs);
-
-double *neat_ffnet_get_outputs(struct neat_ffnet *net);
 
 size_t neat_ffnet_get_input_size(struct neat_ffnet *net);
 size_t neat_ffnet_get_output_size(struct neat_ffnet *net);

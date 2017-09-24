@@ -19,8 +19,7 @@ struct neat_species neat_species_create(struct neat_config config, int id,
 					struct neat_ffnet *genome);
 
 bool neat_species_run(struct neat_species *species,
-		      const double *inputs,
-		      double(*fitness_func)(double *outputs),
+		      double(*fitness_func)(neat_ffnet_t network),
 		      double *avg_fitness);
 
 void neat_species_evolve(struct neat_species *species);

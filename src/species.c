@@ -2,10 +2,27 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>
+
+static int neat_ffnet_fitness_compare(const void *network1, const void *network2)
+{
+	assert(network1);
+	assert(network2);
+
+	const struct neat_ffnet *n1 = network1;
+	const struct neat_ffnet *n2 = network2;
+	
+	double diff = n1->fitness - n2->fitness;
+	double sign = (diff > 0) - (diff < 0);
+
+	return sign;
+}
 
 static void neat_species_culling(struct neat_species *s,
 				 double avg_fitness)
 {
+	assert(s);
+
 	if(avg_fitness > s->max_avg_fitness){
 		s->max_avg_fitness = avg_fitness;
 		s->generation_with_max_fitness = s->generation;
@@ -15,6 +32,10 @@ static void neat_species_culling(struct neat_species *s,
 	if(s->generation - s->generation_with_max_fitness > 20){
 		/* TODO replace with const.STAGNATED_SPECIES_ALLOWED */
 		if(++s->times_stagnated > 2){
+			fprintf(stderr,
+				"Species %d culled due to stagnations\n",
+				s->id);
+
 			s->active = false;
 		}else{
 			s->max_avg_fitness = 0;
@@ -37,6 +58,7 @@ static void neat_species_culling(struct neat_species *s,
 struct neat_species neat_species_create(struct neat_config config, int id,
 					struct neat_ffnet *genome)
 {
+	assert(genome);
 
 	struct neat_species s = {
 		.generation = 0,
@@ -54,6 +76,7 @@ struct neat_species neat_species_create(struct neat_config config, int id,
 	genome->generation = s.generation;
 
 	s.genomes = malloc(sizeof(struct neat_ffnet) * s.population);
+	assert(s.genomes);
 	for(int i = 0; i < s.population; i++){
 		s.genomes[i] = neat_ffnet_copy(genome);
 	}
@@ -62,10 +85,13 @@ struct neat_species neat_species_create(struct neat_config config, int id,
 }
 
 bool neat_species_run(struct neat_species *s,
-		      const double *inputs,
-		      double(*fitness_func)(double *outputs),
+		      double(*fitness_func)(neat_ffnet_t net),
 		      double *avg_fitness)
 {
+	assert(s);
+	assert(fitness_func);
+	assert(avg_fitness);
+
 	if(!s->active){
 		return false;
 	}
@@ -74,12 +100,9 @@ bool neat_species_run(struct neat_species *s,
 
 	double fitness = 0.0;
 	for(int i = 0; i < s->population; i++){
-		struct neat_ffnet *genome = s->genomes + i;
-		neat_ffnet_set_inputs(genome, inputs);
-
-		double *outputs = neat_ffnet_get_outputs(genome);
-		fitness += fitness_func(outputs);
-		free(outputs);
+		double genome_fitness = fitness_func(s->genomes + i);
+		s->genomes[i].fitness = genome_fitness;
+		fitness += genome_fitness;
 	}
 
 	*avg_fitness = fitness / (double)(s->population + 1);
@@ -91,5 +114,14 @@ bool neat_species_run(struct neat_species *s,
 
 void neat_species_evolve(struct neat_species *s)
 {
+	assert(s);
 
+	if(!s->active){
+		return;
+	}
+
+	qsort(s->genomes, s->population, sizeof(struct neat_ffnet),
+	      neat_ffnet_fitness_compare);
+
+	
 }
