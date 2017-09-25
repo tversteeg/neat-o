@@ -37,6 +37,13 @@ neat_pop_t neat_population_create(struct neat_config config)
 	return p;
 }
 
+void neat_population_destroy(neat_pop_t population)
+{
+	struct neat_pop *p = population;
+	assert(p);
+
+}
+
 neat_genome_t neat_run(neat_pop_t population,
 		       double(*fitness_func)(neat_ffnet_t net),
 		       int generations)
@@ -44,6 +51,7 @@ neat_genome_t neat_run(neat_pop_t population,
 	assert(fitness_func);
 
 	struct neat_pop *p = population;
+	assert(p);
 
 	for(int gen = 0; gen < generations; gen++){
 		bool extinct = true;

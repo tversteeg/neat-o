@@ -31,6 +31,8 @@ struct neat_config{
 };
 
 neat_pop_t neat_population_create(struct neat_config config);
+void neat_population_destroy(neat_pop_t population);
+
 neat_genome_t neat_run(neat_pop_t population,
 		       double(*fitness_func)(neat_ffnet_t net),
 		       int generations);
