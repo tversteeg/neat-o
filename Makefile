@@ -1,7 +1,7 @@
 NAME=neat
 
 RM=rm -rf
-CFLAGS=-g -Wall -pedantic -O3 -Iinclude
+CFLAGS=-ggdb3 -Wall -pedantic -O3 -Iinclude
 LDLIBS=-fopenmp
 
 SRCS=tests/test.c src/network.c src/population.c src/species.c

@@ -15,7 +15,7 @@ struct neat_species{
 	struct neat_ffnet *genomes;
 };
 
-struct neat_species neat_species_create(struct neat_config config, int id,
+struct neat_species *neat_species_create(struct neat_config config, int id,
 					struct neat_ffnet *genome);
 void neat_species_destroy(struct neat_species *species);
 

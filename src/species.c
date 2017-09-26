@@ -7,11 +7,11 @@
 static int neat_ffnet_fitness_compare(const void *network1,
 				      const void *network2)
 {
-	assert(network1);
-	assert(network2);
-
 	const struct neat_ffnet *n1 = network1;
+	assert(n1);
+
 	const struct neat_ffnet *n2 = network2;
+	assert(n2);
 	
 	double diff = n1->fitness - n2->fitness;
 	double sign = (diff > 0) - (diff < 0);
@@ -25,10 +25,10 @@ static struct neat_ffnet *neat_ffnet_crossover(struct neat_ffnet *gen,
 	struct neat_ffnet *fit = malloc(sizeof(struct neat_ffnet));
 	struct neat_ffnet *unfit;
 	if(gen->fitness > mate->fitness){
-		*fit = neat_ffnet_copy(gen);
+		neat_ffnet_copynew(fit, gen);
 		unfit = mate;
 	}else{
-		*fit = neat_ffnet_copy(mate);
+		neat_ffnet_copynew(fit, mate);
 		unfit = gen;
 	}
 
@@ -64,7 +64,7 @@ static void neat_species_culling(struct neat_species *s,
 
 			struct neat_ffnet *genome = s->genomes;
 			for(int i = 1; i < s->population; i++){
-				s->genomes[i] = neat_ffnet_copy(genome);
+				neat_ffnet_copy(s->genomes + i, genome);
 				neat_ffnet_randomize_weights(s->genomes + i);
 			}
 		}
@@ -76,12 +76,13 @@ static void neat_species_culling(struct neat_species *s,
 	}
 }
 
-struct neat_species neat_species_create(struct neat_config config, int id,
+struct neat_species *neat_species_create(struct neat_config config, int id,
 					struct neat_ffnet *genome)
 {
 	assert(genome);
 
-	struct neat_species s = {
+	struct neat_species *s = malloc(sizeof(struct neat_species));
+	*s = (struct neat_species){
 		.generation = 0,
 		.generation_with_max_fitness = 0,
 		.max_avg_fitness = 0,
@@ -94,12 +95,12 @@ struct neat_species neat_species_create(struct neat_config config, int id,
 	};
 
 	genome->species_id = id;
-	genome->generation = s.generation;
+	genome->generation = s->generation;
 
-	s.genomes = malloc(sizeof(struct neat_ffnet) * s.population);
-	assert(s.genomes);
-	for(int i = 0; i < s.population; i++){
-		s.genomes[i] = neat_ffnet_copy(genome);
+	s->genomes = malloc(sizeof(struct neat_ffnet) * s->population);
+	assert(s->genomes);
+	for(int i = 0; i < s->population; i++){
+		neat_ffnet_copynew(s->genomes + i, genome);
 	}
 
 	return s;
@@ -112,7 +113,9 @@ void neat_species_destroy(struct neat_species *species)
 	for(int i = 0; i < species->population; i++){
 		neat_ffnet_destroy(species->genomes + i);
 	}
-	free(species->genomes);
+	if(species->population > 0){
+		free(species->genomes);
+	}
 
 	free(species);
 	species = NULL;
@@ -166,8 +169,7 @@ void neat_species_evolve(struct neat_species *s)
 	assert(survivors);
 
 	for(size_t i = 0; i < survivor_population; i++){
-		survivors[i] = neat_ffnet_copy(s->genomes + i);
-		neat_ffnet_destroy(s->genomes + i);
+		neat_ffnet_copynew(survivors + i, s->genomes + i);
 	}
 
 	/* s->genomes[0] is the champion, keep it */
@@ -178,7 +180,7 @@ void neat_species_evolve(struct neat_species *s)
 
 		/* TODO change to config.CROSSOVER_CHANCE */
 		if(rand() < RAND_MAX / 100){
-			s->genomes[i] = neat_ffnet_copy(new_genome);
+			neat_ffnet_copy(s->genomes + i, new_genome);
 			continue;
 		}
 
@@ -186,7 +188,7 @@ void neat_species_evolve(struct neat_species *s)
 		struct neat_ffnet *mate = survivors + mate_sample;
 
 		new_genome = neat_ffnet_crossover(new_genome, mate);
-		s->genomes[i] = neat_ffnet_copy(new_genome);
+		neat_ffnet_copy(s->genomes + i, new_genome);
 		neat_ffnet_destroy(new_genome);
 
 		neat_ffnet_mutate(s->genomes + i);

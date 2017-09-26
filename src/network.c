@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <assert.h>
 
 #include "population.h"
@@ -154,12 +155,13 @@ static struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
 	return gene;
 }
 
-struct neat_ffnet neat_ffnet_create(struct neat_config config)
+struct neat_ffnet *neat_ffnet_create(struct neat_config config)
 {
 	int ninputs = config.input_genome_topo;
 	int noutputs = config.output_genome_topo;
 
-	struct neat_ffnet net = {
+	struct neat_ffnet *net = malloc(sizeof(struct neat_ffnet));
+	*net = (struct neat_ffnet){
 		.species_id = -1,
 		.generation = 0,
 		.fitness = 0,
@@ -171,83 +173,117 @@ struct neat_ffnet neat_ffnet_create(struct neat_config config)
 
 	int neuron_id = 0;
 	for(int i = 0; i < ninputs; i++){
-		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_INPUT);
+		neat_ffnet_add_neuron(net, neuron_id, NEAT_NEURON_INPUT);
 		neuron_id++;
 	}
 
 	for(int i = 0; i < noutputs; i++){
-		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_OUTPUT);
+		neat_ffnet_add_neuron(net, neuron_id, NEAT_NEURON_OUTPUT);
 		neuron_id++;
 	}
 
 	for(int i = 0; i < ninputs; i++){
 		for(int j = 0; j < noutputs; j++){
-			int index = net.output_offset + j;
-			neat_ffnet_add_gene(&net, i, index, 0.0, true);
+			int index = net->output_offset + j;
+			neat_ffnet_add_gene(net, i, index, 0.0, true);
 		}
 	}
 
-	neat_ffnet_randomize_weights(&net);
+	neat_ffnet_randomize_weights(net);
 
 	return net;
 }
 
-struct neat_ffnet neat_ffnet_copy(struct neat_ffnet *src)
+void neat_ffnet_copynew(struct neat_ffnet *dst, struct neat_ffnet *src)
 {
 	assert(src);
 
-	struct neat_ffnet dest;
-	memcpy(&dest, src, sizeof(struct neat_ffnet));
+	memcpy(dst, src, sizeof(struct neat_ffnet));
 
-	dest.neurons = malloc(sizeof(struct neat_neuron) * dest.nneurons);
-	assert(dest.neurons);
-	for(int i = 0; i < dest.nneurons; i++){
-		struct neat_neuron *n_dest = dest.neurons + i;
-		assert(n_dest);
+	size_t bytes = sizeof(struct neat_gene) * dst->ngenes;
+	if(bytes > 0){
+		dst->genes = malloc(bytes);
+		assert(dst->genes);
 
+		memcpy(dst->genes, src->genes, bytes);
+	}else{
+		dst->genes = NULL;
+	}
+
+	bytes = sizeof(struct neat_neuron) * dst->nneurons;
+	if(bytes == 0){
+		dst->neurons = NULL;
+		return;
+	}
+	dst->neurons = malloc(bytes);
+	assert(dst->neurons);
+	memcpy(dst->neurons, src->neurons, bytes);
+
+	for(int i = 0; i < dst->nneurons; i++){
+		struct neat_neuron *n_dst = dst->neurons + i;
 		struct neat_neuron *n_src = src->neurons + i;
-		assert(n_src);
-		memcpy(n_dest, n_src, sizeof(struct neat_neuron));
-		assert(n_dest);
 		
-		size_t bytes = sizeof(size_t) * n_dest->ninput_genes;
-		n_dest->input_genes = malloc(bytes);
-		assert(n_dest->input_genes);
-		for(int j = 0; j < n_dest->ninput_genes; j++){
-			memcpy(n_dest->input_genes + j,
-			       n_src->input_genes + j,
-			       sizeof(size_t));
+		bytes = sizeof(size_t) * n_dst->ninput_genes;
+		if(bytes > 0){
+			n_dst->input_genes = malloc(bytes);
+			assert(n_dst->input_genes);
+			memcpy(n_dst->input_genes, n_src->input_genes, bytes);
+		}else{
+			n_dst->input_genes = NULL;
 		}
 
-		bytes = sizeof(size_t) * n_dest->noutput_genes;
-		n_dest->output_genes = malloc(bytes);
-		assert(n_dest->output_genes);
-		for(int j = 0; j < n_dest->noutput_genes; j++){
-			memcpy(n_dest->output_genes + j,
-			       n_src->output_genes + j,
-			       sizeof(size_t));
+		bytes = sizeof(size_t) * n_dst->noutput_genes;
+		if(bytes > 0){
+			n_dst->output_genes = malloc(bytes);
+			assert(n_dst->output_genes);
+			memcpy(n_dst->output_genes, n_src->output_genes, bytes);
+		}else{
+			n_dst->output_genes = NULL;
 		}
 	}
+}
 
-	dest.genes = malloc(sizeof(struct neat_gene) * dest.ngenes);
-	assert(dest.genes);
-	for(int i = 0; i < dest.ngenes; i++){
-		dest.genes[i] = src->genes[i];
+void neat_ffnet_copy(struct neat_ffnet *dst, struct neat_ffnet *src)
+{
+	assert(dst);
+	assert(src);
+
+	if(dst->ngenes > 0){
+		free(dst->genes);
+	}
+	if(dst->nneurons > 0){
+		for(int i = 0; i < dst->nneurons; i++){
+			if(dst->neurons[i].ninput_genes > 0){
+				free(dst->neurons[i].input_genes);
+			}
+			if(dst->neurons[i].noutput_genes > 0){
+				free(dst->neurons[i].output_genes);
+			}
+		}
+		free(dst->neurons);
 	}
 
-	return dest;
+	neat_ffnet_copynew(dst, src);
 }
 
 void neat_ffnet_destroy(struct neat_ffnet *net)
 {
 	assert(net);
 
-	for(int i = 0; i < net->nneurons; i++){
-		free(net->neurons[i].input_genes);
-		free(net->neurons[i].output_genes);
+	if(net->nneurons > 0){
+		for(int i = 0; i < net->nneurons; i++){
+			if(net->neurons[i].ninput_genes > 0){
+				free(net->neurons[i].input_genes);
+			}
+			if(net->neurons[i].noutput_genes > 0){
+				free(net->neurons[i].output_genes);
+			}
+		}
+		free(net->neurons);
 	}
-	free(net->neurons);
-	free(net->genes);
+	if(net->ngenes > 0){
+		free(net->genes);
+	}
 	free(net);
 
 	net = NULL;

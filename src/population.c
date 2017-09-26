@@ -6,32 +6,17 @@
 #include "network.h"
 #include "species.h"
 
-static void neat_create_new_species(struct neat_pop *p)
-{
-	assert(p);
-
-	size_t bytes = sizeof(struct neat_species) * (p->nspecies + 1);
-	p->species = realloc(p->species, bytes);
-	assert(p->species);
-
-	struct neat_species *s = p->species + p->nspecies;
-
-	*s = neat_species_create(p->conf, p->nspecies, &p->initial_genome);
-
-	p->nspecies++;
-}
-
 neat_pop_t neat_population_create(struct neat_config config)
 {
-	struct neat_pop *p = malloc(sizeof(struct neat_pop));
+	struct neat_pop *p = calloc(1, sizeof(struct neat_pop));
 	assert(p);
 
 	p->conf = config;
 	p->initial_genome = neat_ffnet_create(config);
+	assert(p->initial_genome);
 
-	p->species = malloc(sizeof(struct neat_species));
+	p->species = neat_species_create(p->conf, 0, p->initial_genome);
 	assert(p->species);
-	*p->species = neat_species_create(p->conf, 0, &p->initial_genome);
 	p->nspecies = 1;
 
 	return p;
@@ -42,6 +27,14 @@ void neat_population_destroy(neat_pop_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
+	neat_ffnet_destroy(p->initial_genome);
+
+	for(int i = 0; i < p->nspecies; i++){
+		neat_species_destroy(p->species + i);
+	}
+	free(p);
+
+	p = NULL;
 }
 
 neat_genome_t neat_run(neat_pop_t population,
@@ -71,9 +64,11 @@ neat_genome_t neat_run(neat_pop_t population,
 			return NULL;
 		}
 
+		/*
 		for(int i = 0; i < p->nspecies; i++){
 			neat_species_evolve(p->species + i);
 		}
+		*/
 	}
 
 	return NULL;
