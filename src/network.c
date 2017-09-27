@@ -12,6 +12,30 @@ static inline double neat_fast_sigmoid(double x)
 	return x / (1 + fabs(x));
 }
 
+static void neat_gene_mutate_weight(struct neat_gene *gene)
+{
+	assert(gene);
+
+	/* TODO change to config.WEIGHT_MUTATION_RATE */
+	if(rand() > RAND_MAX / 5){
+		/* TODO change to config.UNIFORM_WEIGHT_MUTATION_RATE */
+		if(rand() > RAND_MAX / 10){
+			/* Random number between -1 and 1 */
+			gene->weight += rand() / (double)(RAND_MAX / 2) - 1.0;
+		}else{
+			/* Random number between -2 and 2 */
+			gene->weight = rand() / (double)(RAND_MAX / 4) - 2.0;
+		}
+	}
+
+	if(!gene->enabled){
+		/* TODO change to config.UNIFORM_WEIGHT_MUTATION_RATE */
+		if(rand() > RAND_MAX / 10){
+			gene->enabled = true;
+		}
+	}
+}
+
 static void neat_neuron_reset(struct neat_neuron *neuron)
 {
 	assert(neuron);
@@ -40,6 +64,8 @@ static bool neat_neuron_is_ready(struct neat_neuron neuron)
 
 static void neat_neuron_add_input(struct neat_neuron *neuron, double input)
 {
+	assert(neuron);
+
 	neuron->input += input;
 	neuron->received_inputs++;
 }
@@ -304,7 +330,21 @@ void neat_ffnet_randomize_weights(struct neat_ffnet *net)
 
 void neat_ffnet_mutate(struct neat_ffnet *net)
 {
-	/* TODO implement mutation */
+	assert(net);
+
+	for(int i = 0; i < net->ngenes; i++){
+		neat_gene_mutate_weight(net->genes + i);
+	}
+
+	/* TODO change to config.ADD_GENE_MUTATION_RATE */
+	if(rand() < RAND_MAX / 20){
+
+	}
+
+	/* TODO change to config.ADD_NODE_MUTATION_RATE */
+	if(rand() < RAND_MAX / 33){
+		
+	}
 }
 
 inline size_t neat_ffnet_get_input_size(struct neat_ffnet *net)

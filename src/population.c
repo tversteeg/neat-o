@@ -65,11 +65,9 @@ neat_genome_t neat_run(neat_pop_t population,
 			return NULL;
 		}
 
-		/*
 		for(int i = 0; i < p->nspecies; i++){
 			neat_species_evolve(p->species + i);
 		}
-		*/
 	}
 
 	return NULL;

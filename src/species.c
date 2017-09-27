@@ -185,9 +185,10 @@ void neat_species_evolve(struct neat_species *s)
 		int mate_sample = rand() % survivor_population;
 		struct neat_ffnet *mate = survivors + mate_sample;
 
-		new_genome = neat_ffnet_crossover(new_genome, mate);
-		neat_ffnet_copy(s->genomes + i, new_genome);
-		neat_ffnet_destroy(new_genome);
+		struct neat_ffnet *new = neat_ffnet_crossover(new_genome, mate);
+		neat_ffnet_copy(s->genomes + i, new);
+		neat_ffnet_destroy(new);
+		free(new);
 
 		neat_ffnet_mutate(s->genomes + i);
 	}
