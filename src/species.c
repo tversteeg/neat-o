@@ -76,13 +76,13 @@ static void neat_species_culling(struct neat_species *s,
 	}
 }
 
-struct neat_species *neat_species_create(struct neat_config config, int id,
+struct neat_species neat_species_create(struct neat_config config, int id,
 					struct neat_ffnet *genome)
 {
 	assert(genome);
+	assert(config.population_size > 0);
 
-	struct neat_species *s = malloc(sizeof(struct neat_species));
-	*s = (struct neat_species){
+	struct neat_species s = {
 		.generation = 0,
 		.generation_with_max_fitness = 0,
 		.max_avg_fitness = 0,
@@ -95,12 +95,12 @@ struct neat_species *neat_species_create(struct neat_config config, int id,
 	};
 
 	genome->species_id = id;
-	genome->generation = s->generation;
+	genome->generation = s.generation;
 
-	s->genomes = malloc(sizeof(struct neat_ffnet) * s->population);
-	assert(s->genomes);
-	for(int i = 0; i < s->population; i++){
-		neat_ffnet_copynew(s->genomes + i, genome);
+	s.genomes = calloc(s.population, sizeof(struct neat_ffnet));
+	assert(s.genomes);
+	for(int i = 0; i < s.population; i++){
+		neat_ffnet_copynew(s.genomes + i, genome);
 	}
 
 	return s;
@@ -110,15 +110,13 @@ void neat_species_destroy(struct neat_species *species)
 {
 	assert(species);
 
-	for(int i = 0; i < species->population; i++){
-		neat_ffnet_destroy(species->genomes + i);
-	}
 	if(species->population > 0){
+		for(int i = 0; i < species->population; i++){
+			neat_ffnet_destroy(species->genomes + i);
+		}
 		free(species->genomes);
+		species->genomes = NULL;
 	}
-
-	free(species);
-	species = NULL;
 }
 
 bool neat_species_run(struct neat_species *s,

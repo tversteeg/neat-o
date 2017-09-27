@@ -41,7 +41,7 @@ static void run()
 
 	neat_pop_t pop = neat_population_create(conf);
 
-	//neat_run(pop, calculate_fitness, 100);
+	neat_run(pop, calculate_fitness, 100);
 
 	neat_population_destroy(pop);
 }

@@ -155,13 +155,12 @@ static struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
 	return gene;
 }
 
-struct neat_ffnet *neat_ffnet_create(struct neat_config config)
+struct neat_ffnet neat_ffnet_create(struct neat_config config)
 {
 	int ninputs = config.input_genome_topo;
 	int noutputs = config.output_genome_topo;
 
-	struct neat_ffnet *net = malloc(sizeof(struct neat_ffnet));
-	*net = (struct neat_ffnet){
+	struct neat_ffnet net = {
 		.species_id = -1,
 		.generation = 0,
 		.fitness = 0,
@@ -173,23 +172,23 @@ struct neat_ffnet *neat_ffnet_create(struct neat_config config)
 
 	int neuron_id = 0;
 	for(int i = 0; i < ninputs; i++){
-		neat_ffnet_add_neuron(net, neuron_id, NEAT_NEURON_INPUT);
+		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_INPUT);
 		neuron_id++;
 	}
 
 	for(int i = 0; i < noutputs; i++){
-		neat_ffnet_add_neuron(net, neuron_id, NEAT_NEURON_OUTPUT);
+		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_OUTPUT);
 		neuron_id++;
 	}
 
 	for(int i = 0; i < ninputs; i++){
 		for(int j = 0; j < noutputs; j++){
-			int index = net->output_offset + j;
-			neat_ffnet_add_gene(net, i, index, 0.0, true);
+			int index = net.output_offset + j;
+			neat_ffnet_add_gene(&net, i, index, 0.0, true);
 		}
 	}
 
-	neat_ffnet_randomize_weights(net);
+	neat_ffnet_randomize_weights(&net);
 
 	return net;
 }
@@ -280,13 +279,14 @@ void neat_ffnet_destroy(struct neat_ffnet *net)
 			}
 		}
 		free(net->neurons);
+		net->neurons = NULL;
+		net->nneurons = 0;
 	}
 	if(net->ngenes > 0){
 		free(net->genes);
+		net->genes = NULL;
+		net->ngenes = 0;
 	}
-	free(net);
-
-	net = NULL;
 }
 
 void neat_ffnet_randomize_weights(struct neat_ffnet *net)

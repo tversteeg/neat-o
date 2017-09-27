@@ -13,9 +13,9 @@ neat_pop_t neat_population_create(struct neat_config config)
 
 	p->conf = config;
 	p->initial_genome = neat_ffnet_create(config);
-	assert(p->initial_genome);
 
-	p->species = neat_species_create(p->conf, 0, p->initial_genome);
+	p->species = malloc(sizeof(struct neat_species));
+	*p->species = neat_species_create(p->conf, 0, &p->initial_genome);
 	assert(p->species);
 	p->nspecies = 1;
 
@@ -27,11 +27,12 @@ void neat_population_destroy(neat_pop_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
-	neat_ffnet_destroy(p->initial_genome);
+	neat_ffnet_destroy(&p->initial_genome);
 
 	for(int i = 0; i < p->nspecies; i++){
 		neat_species_destroy(p->species + i);
 	}
+	free(p->species);
 	free(p);
 
 	p = NULL;

@@ -42,7 +42,7 @@ struct neat_ffnet{
 	double fitness;
 };
 
-struct neat_ffnet *neat_ffnet_create(struct neat_config config);
+struct neat_ffnet neat_ffnet_create(struct neat_config config);
 void neat_ffnet_copynew(struct neat_ffnet *dst, struct neat_ffnet *src);
 void neat_ffnet_copy(struct neat_ffnet *dst, struct neat_ffnet *src);
 void neat_ffnet_destroy(struct neat_ffnet *net);
