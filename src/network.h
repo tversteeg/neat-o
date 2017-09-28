@@ -2,32 +2,8 @@
 
 #include <neat.h>
 
-enum neat_neuron_type{
-	NEAT_NEURON_INPUT,
-	NEAT_NEURON_HIDDEN,
-	NEAT_NEURON_OUTPUT
-};
-
-struct neat_neuron;
-
-struct neat_gene{
-	size_t neuron_input, neuron_output;
-
-	bool enabled;
-	double weight;
-};
-
-struct neat_neuron{
-	int id;
-	enum neat_neuron_type type;
-
-	size_t *input_genes, *output_genes;
-	size_t ninput_genes, noutput_genes;
-
-	double input;
-	size_t received_inputs;
-	bool sent_output;
-};
+#include "gene.h"
+#include "neuron.h"
 
 struct neat_ffnet{
 	/* The order of the neurons array is: [input, output, hidden] */

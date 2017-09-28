@@ -48,6 +48,8 @@ neat_genome_t neat_run(neat_pop_t population,
 	assert(p);
 
 	for(int gen = 0; gen < generations; gen++){
+		printf("Generation %d\n", gen + 1);
+		
 		bool extinct = true;
 		for(int i = 0; i < p->nspecies; i++){
 			struct neat_species *s = p->species + i;

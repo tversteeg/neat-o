@@ -1,10 +1,12 @@
 NAME=neat
 
 RM=rm -rf
-CFLAGS=-ggdb3 -Wall -pedantic -O3 -Iinclude
+CFLAGS=-g -Wall -pedantic -O3 -Iinclude
 LDLIBS=-fopenmp
 
-SRCS=tests/test.c src/network.c src/population.c src/species.c
+SRCS=src/network.c src/population.c src/species.c src/gene.c src/neuron.c \
+     tests/test.c 
+
 OBJS=$(subst .c,.o,$(SRCS))
 
 all: $(NAME)

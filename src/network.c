@@ -7,141 +7,22 @@
 
 #include "population.h"
 
-static inline double neat_fast_sigmoid(double x)
-{
-	return x / (1 + fabs(x));
-}
-
-static void neat_gene_mutate_weight(struct neat_gene *gene)
-{
-	assert(gene);
-
-	/* TODO change to config.WEIGHT_MUTATION_RATE */
-	if(rand() > RAND_MAX / 5){
-		/* TODO change to config.UNIFORM_WEIGHT_MUTATION_RATE */
-		if(rand() > RAND_MAX / 10){
-			/* Random number between -1 and 1 */
-			gene->weight += rand() / (double)(RAND_MAX / 2) - 1.0;
-		}else{
-			/* Random number between -2 and 2 */
-			gene->weight = rand() / (double)(RAND_MAX / 4) - 2.0;
-		}
-	}
-
-	if(!gene->enabled){
-		/* TODO change to config.UNIFORM_WEIGHT_MUTATION_RATE */
-		if(rand() > RAND_MAX / 10){
-			gene->enabled = true;
-		}
-	}
-}
-
-static void neat_neuron_reset(struct neat_neuron *neuron)
-{
-	assert(neuron);
-
-	neuron->received_inputs = 0;
-	neuron->input = 0.0;
-	neuron->sent_output = false;
-}
-
-static size_t neat_neuron_get_expected_inputs(struct neat_neuron neuron)
-{
-	if(neuron.type == NEAT_NEURON_INPUT){
-		return 1;
-	}
-
-	return neuron.ninput_genes;
-}
-
-static bool neat_neuron_is_ready(struct neat_neuron neuron)
-{
-	size_t expected_inputs = neat_neuron_get_expected_inputs(neuron);
-	bool received_all_inputs = neuron.received_inputs == expected_inputs;
-
-	return !neuron.sent_output && received_all_inputs;
-}
-
-static void neat_neuron_add_input(struct neat_neuron *neuron, double input)
-{
-	assert(neuron);
-
-	neuron->input += input;
-	neuron->received_inputs++;
-}
-
-static void neat_neuron_fire(struct neat_ffnet *net,
-			     struct neat_neuron *neuron)
-{
-	assert(net);
-	assert(neuron);
-
-	neuron->sent_output = true;
-	for(int i = 0; i < neuron->noutput_genes; i++){
-		assert(neuron->output_genes + i);
-		size_t gene_index = neuron->output_genes[i];
-		assert(gene_index < net->ngenes);
-		struct neat_gene *g = net->genes + gene_index;
-		assert(g);
-
-		struct neat_neuron *output = net->neurons + g->neuron_output;
-		assert(output);
-
-		if(g->enabled){
-			neat_neuron_add_input(output, 0);
-		}else{
-			double activation = neat_fast_sigmoid(neuron->input);
-			neat_neuron_add_input(output, activation * g->weight);
-		}
-	}
-}
-
-static void neat_neuron_add_input_gene(struct neat_ffnet *net,
-				       size_t neuron_offset,
-				       size_t gene_offset)
-{
-	assert(net);
-
-	struct neat_neuron *n = net->neurons + neuron_offset;
-	assert(n);
-
-	size_t bytes = sizeof(size_t) * (n->ninput_genes + 1);
-	n->input_genes = realloc(n->input_genes, bytes);
-	assert(n->input_genes);
-
-	n->input_genes[n->ninput_genes] = gene_offset;
-	n->ninput_genes++;
-}
-
-static void neat_neuron_add_output_gene(struct neat_ffnet *net,
-					size_t neuron_offset,
-					size_t gene_offset)
-{
-	assert(net);
-
-	struct neat_neuron *n = net->neurons + neuron_offset;
-	assert(n);
-
-	size_t bytes = sizeof(size_t) * (n->noutput_genes + 1);
-	n->output_genes = realloc(n->output_genes, bytes);
-	assert(n->output_genes);
-
-	n->output_genes[n->noutput_genes] = gene_offset;
-	n->noutput_genes++;
-}
-
-static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net, int id,
+static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net,
 						 enum neat_neuron_type type)
 {
 	assert(net);
 
-	size_t bytes = sizeof(struct neat_neuron) * (net->nneurons + 1);
-	net->neurons = realloc(net->neurons, bytes);
+	if(net->nneurons == 0){
+		net->neurons = malloc(sizeof(struct neat_neuron));
+	}else{
+		size_t bytes = sizeof(struct neat_neuron) * (net->nneurons + 1);
+		net->neurons = realloc(net->neurons, bytes);
+	}
 	assert(net->neurons);
 
 	struct neat_neuron *neuron = net->neurons + net->nneurons;
 	*neuron = (struct neat_neuron){
-		.id = id,
+		.id = net->nneurons,
 		.type = type,
 
 		.input = 0.0,
@@ -154,15 +35,20 @@ static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net, int id,
 	return neuron;
 }
 
-static struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
-				      	     int neuron_input_offset,
-				      	     int neuron_output_offset,
-				      	     double weight, bool enabled)
+static void neat_ffnet_add_gene(struct neat_ffnet *net,
+				int neuron_input_offset,
+				int neuron_output_offset,
+				double weight,
+				bool enabled)
 {
 	assert(net);
 
-	size_t bytes = sizeof(struct neat_gene) * (net->ngenes + 1);
-	net->genes = realloc(net->genes, bytes);
+	if(net->ngenes == 0){
+		net->genes = malloc(sizeof(struct neat_gene));
+	}else{
+		size_t bytes = sizeof(struct neat_gene) * (net->ngenes + 1);
+		net->genes = realloc(net->genes, bytes);
+	}
 	assert(net->genes);
 
 	struct neat_gene *gene = net->genes + net->ngenes;
@@ -173,12 +59,10 @@ static struct neat_gene *neat_ffnet_add_gene(struct neat_ffnet *net,
 		.enabled = enabled
 	};
 
-	neat_neuron_add_input_gene(net, neuron_input_offset, net->ngenes);
-	neat_neuron_add_output_gene(net, neuron_output_offset, net->ngenes);
+	neat_neuron_add_output_gene(net, neuron_input_offset, net->ngenes);
+	neat_neuron_add_input_gene(net, neuron_output_offset, net->ngenes);
 
-	net->ngenes++;
-
-	return gene;
+	++net->ngenes;
 }
 
 struct neat_ffnet neat_ffnet_create(struct neat_config config)
@@ -190,21 +74,20 @@ struct neat_ffnet neat_ffnet_create(struct neat_config config)
 		.species_id = -1,
 		.generation = 0,
 		.fitness = 0,
+
+		.nneurons = 0,
 		.ngenes = 0,
 
 		.output_offset = ninputs,
 		.hidden_offset = ninputs + noutputs
 	};
 
-	int neuron_id = 0;
 	for(int i = 0; i < ninputs; i++){
-		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_INPUT);
-		neuron_id++;
+		neat_ffnet_add_neuron(&net, NEAT_NEURON_INPUT);
 	}
 
 	for(int i = 0; i < noutputs; i++){
-		neat_ffnet_add_neuron(&net, neuron_id, NEAT_NEURON_OUTPUT);
-		neuron_id++;
+		neat_ffnet_add_neuron(&net, NEAT_NEURON_OUTPUT);
 	}
 
 	for(int i = 0; i < ninputs; i++){
@@ -338,12 +221,40 @@ void neat_ffnet_mutate(struct neat_ffnet *net)
 
 	/* TODO change to config.ADD_GENE_MUTATION_RATE */
 	if(rand() < RAND_MAX / 20){
+		bool gene_added = false;
+		while(!gene_added){
+			if(neat_ffnet_get_hidden_size(net) < 1){
+				break;
+			}
 
+			break;
+		}
 	}
 
 	/* TODO change to config.ADD_NODE_MUTATION_RATE */
 	if(rand() < RAND_MAX / 33){
-		
+		size_t gene_num = rand() % net->ngenes;
+		struct neat_gene *selected = net->genes + gene_num;
+		assert(selected);
+
+		if(!selected->enabled){
+			return;
+		}
+
+		printf("Add node mutation for gene %d\n", gene_num);
+
+		selected->enabled = false;
+
+		struct neat_neuron *neuron;
+		neuron = neat_ffnet_add_neuron(net, NEAT_NEURON_HIDDEN);
+
+		printf("%d ->(1.0) %d\n", selected->neuron_input, neuron->id);
+		neat_ffnet_add_gene(net, selected->neuron_input, neuron->id,
+				    1.0, true);
+
+		printf("%d ->(%g) %d\n", neuron->id, selected->neuron_output, selected->weight);
+		neat_ffnet_add_gene(net, neuron->id, selected->neuron_output,
+				    selected->weight, true);
 	}
 }
 
@@ -368,6 +279,21 @@ inline size_t neat_ffnet_get_hidden_size(struct neat_ffnet *net)
 	return net->nneurons - net->hidden_offset;
 }
 
+void print_tree(struct neat_ffnet *net, struct neat_neuron *n)
+{
+	printf("%d(", n->id);
+	for(int i = 0; i < n->ninput_genes; i++){
+		struct neat_gene *gene = net->genes + n->input_genes[i];
+		printf("%d,", gene->neuron_input);
+	}
+	printf(") -> (");
+	for(int i = 0; i < n->noutput_genes; i++){
+		struct neat_gene *gene = net->genes + n->output_genes[i];
+		printf("%d,", gene->neuron_output);
+	}
+	printf(")\n");
+}
+
 void neat_ffnet_predict(neat_ffnet_t network, const double *inputs)
 {
 	struct neat_ffnet *net = network;
@@ -387,6 +313,10 @@ void neat_ffnet_predict(neat_ffnet_t network, const double *inputs)
 		for(int i = 0; i < net->nneurons; i++){
 			struct neat_neuron *neuron = net->neurons + i;
 			assert(neuron);
+			if(neuron->type == NEAT_NEURON_OUTPUT){
+				continue;
+			}
+
 			if(neat_neuron_is_ready(*neuron)){
 				neat_neuron_fire(net, neuron);
 			}
