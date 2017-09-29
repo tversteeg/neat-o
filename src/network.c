@@ -21,16 +21,22 @@ static struct neat_neuron *neat_ffnet_add_neuron(struct neat_ffnet *net,
 	assert(net->neurons);
 
 	struct neat_neuron *neuron = net->neurons + net->nneurons;
+	assert(neuron);
 	*neuron = (struct neat_neuron){
 		.id = net->nneurons,
 		.type = type,
 
 		.input = 0.0,
 		.received_inputs = 0,
-		.sent_output = false
+		.sent_output = false,
+
+		.ninput_genes = 0,
+		.noutput_genes = 0,
+		.input_genes = NULL,
+		.output_genes = NULL
 	};
 
-	net->nneurons++;
+	++net->nneurons;
 
 	return neuron;
 }
@@ -42,6 +48,8 @@ static void neat_ffnet_add_gene(struct neat_ffnet *net,
 				bool enabled)
 {
 	assert(net);
+	assert(neuron_input_offset < net->nneurons);
+	assert(neuron_output_offset < net->nneurons);
 
 	if(net->ngenes == 0){
 		net->genes = malloc(sizeof(struct neat_gene));
@@ -59,10 +67,11 @@ static void neat_ffnet_add_gene(struct neat_ffnet *net,
 		.enabled = enabled
 	};
 
-	neat_neuron_add_output_gene(net, neuron_input_offset, net->ngenes);
-	neat_neuron_add_input_gene(net, neuron_output_offset, net->ngenes);
-
+	size_t id = net->ngenes;
 	++net->ngenes;
+
+	neat_neuron_add_output_gene(net, neuron_input_offset, id);
+	neat_neuron_add_input_gene(net, neuron_output_offset, id);
 }
 
 struct neat_ffnet neat_ffnet_create(struct neat_config config)
@@ -241,20 +250,36 @@ void neat_ffnet_mutate(struct neat_ffnet *net)
 			return;
 		}
 
-		printf("Add node mutation for gene %d\n", gene_num);
+		assert(selected->neuron_input < net->nneurons);
+		assert(selected->neuron_output < net->nneurons);
+
+		printf("Add node mutation for gene %zu\n", gene_num);
 
 		selected->enabled = false;
+
+		int selected_input = selected->neuron_input;
+		int selected_output = selected->neuron_output;
+		double selected_weight = selected->weight;
 
 		struct neat_neuron *neuron;
 		neuron = neat_ffnet_add_neuron(net, NEAT_NEURON_HIDDEN);
 
-		printf("%d ->(1.0) %d\n", selected->neuron_input, neuron->id);
-		neat_ffnet_add_gene(net, selected->neuron_input, neuron->id,
-				    1.0, true);
+		printf("%zu ->(1.0) %zu\n", selected_input,
+					    neuron->id);
+		neat_ffnet_add_gene(net,
+				    selected_input,
+				    neuron->id,
+				    1.0,
+				    true);
 
-		printf("%d ->(%g) %d\n", neuron->id, selected->neuron_output, selected->weight);
-		neat_ffnet_add_gene(net, neuron->id, selected->neuron_output,
-				    selected->weight, true);
+		printf("%zu ->(%g) %zu\n", neuron->id,
+					   selected_weight,
+					   selected_output);
+		neat_ffnet_add_gene(net,
+				    neuron->id,
+				    selected_output,
+				    selected_weight,
+				    true);
 	}
 }
 
@@ -277,21 +302,6 @@ inline size_t neat_ffnet_get_hidden_size(struct neat_ffnet *net)
 	assert(net);
 
 	return net->nneurons - net->hidden_offset;
-}
-
-void print_tree(struct neat_ffnet *net, struct neat_neuron *n)
-{
-	printf("%d(", n->id);
-	for(int i = 0; i < n->ninput_genes; i++){
-		struct neat_gene *gene = net->genes + n->input_genes[i];
-		printf("%d,", gene->neuron_input);
-	}
-	printf(") -> (");
-	for(int i = 0; i < n->noutput_genes; i++){
-		struct neat_gene *gene = net->genes + n->output_genes[i];
-		printf("%d,", gene->neuron_output);
-	}
-	printf(")\n");
 }
 
 void neat_ffnet_predict(neat_ffnet_t network, const double *inputs)
