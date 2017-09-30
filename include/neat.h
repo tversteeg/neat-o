@@ -25,6 +25,7 @@ struct neat_config{
 	bool reset_on_extinction;
 
 	int input_genome_topo, output_genome_topo;
+	int max_hidden_layers, max_hidden_layer_neurons;
 
 	/* Default Genome */
 	enum neat_activation_option activation_default, activation_option;

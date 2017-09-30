@@ -1,17 +1,21 @@
 NAME=neat
 
+TESTS=tests/nn.c tests/neat.c
+
 RM=rm -rf
 CFLAGS=-g -Wall -pedantic -O3 -Iinclude
 LDLIBS=-fopenmp
 
-SRCS=src/network.c src/population.c src/species.c src/gene.c src/neuron.c \
-     tests/test.c 
-
+SRCS=src/neat/population.c src/neat/species.c \
+     src/nn/nn.c \
+     $(TESTS)
 OBJS=$(subst .c,.o,$(SRCS))
 
-all: $(NAME)
+TESTBINS=$(subst .c,,$(TESTS))
 
-$(NAME): $(OBJS)
+all: $(TESTBINS)
+
+$(TESTBINS): $(OBJS)
 	$(CC) $(LDFLAGS) -o $(NAME) $(OBJS) $(LDLIBS)
 
 .PHONY: clean

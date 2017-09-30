@@ -36,7 +36,7 @@ static void run()
 		.input_genome_topo = 2,
 		.output_genome_topo = 1,
 
-		.population_size = 15
+		.population_size = 100
 	};
 
 	neat_pop_t pop = neat_population_create(conf);

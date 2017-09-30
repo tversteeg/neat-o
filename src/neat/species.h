@@ -1,8 +1,7 @@
 #pragma once
 
 #include <neat.h>
-
-#include "network.h"
+#include <nn.h>
 
 struct neat_species{
 	int id, population, generation;

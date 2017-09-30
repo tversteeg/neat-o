@@ -1,8 +1,8 @@
 #pragma once
 
 #include <neat.h>
+#include <nn.h>
 
-#include "network.h"
 #include "species.h"
 
 struct neat_pop{
@@ -10,7 +10,7 @@ struct neat_pop{
 
 	bool solved;
 
-	struct neat_ffnet initial_genome;
+	struct nn_ffnet initial_genome;
 
 	struct neat_species *species;
 	int nspecies;
