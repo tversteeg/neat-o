@@ -5,6 +5,15 @@
 #include <string.h>
 #include <assert.h>
 
+static double nn_rand(double start, double end)
+{
+	assert(start < end);
+
+	double range = end - start;
+
+	return (rand() / (double)RAND_MAX) * range + start;
+}
+
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
 				 size_t hidden_count,
 				 size_t output_count,
@@ -18,7 +27,7 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 		size_t input_weights = (input_count + 1) * hidden_count;
 		size_t hidden_internal_weights = (hidden_layer_count - 1) *
 						 (hidden_count + 1) *
-						 hidden;
+						 hidden_count;
 		hidden_weights = input_weights + hidden_internal_weights;
 	}
 
@@ -53,7 +62,7 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 	net->nneurons = total_neurons;
 
 	/* Point the pointers to the extra allocated data */
-	net->weight = (double*)((char*)net + sizeof(struct net_ffnet));
+	net->weight = (double*)((char*)net + sizeof(struct nn_ffnet));
 	net->output = net->weight + net->nweights;
 	net->delta = net->weight + net->nneurons;
 
@@ -61,4 +70,20 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 	net->output_activation = NN_ACTIVATION_SIGMOID;
 
 	return net;
+}
+
+void nn_ffnet_destroy(struct nn_ffnet *net)
+{
+	assert(net);
+
+	free(net);
+}
+
+void nn_ffnet_randomize(struct nn_ffnet *net)
+{
+	assert(net);
+
+	for(int i = 0; i < net->nweights; i++){
+		net->weight[i] = nn_rand(-0.5, 0.5);
+	}
 }
