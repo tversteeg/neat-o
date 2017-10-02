@@ -14,6 +14,15 @@ static double nn_rand(double start, double end)
 	return (rand() / (double)RAND_MAX) * range + start;
 }
 
+static void nn_ffnet_set_pointers(struct nn_ffnet *net)
+{
+	assert(net);
+
+	net->weight = (double*)((char*)net + sizeof(struct nn_ffnet));
+	net->output = net->weight + net->nweights;
+	net->delta = net->weight + net->nneurons;
+}
+
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
 				 size_t hidden_count,
 				 size_t output_count,
@@ -61,15 +70,31 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 	net->nweights = total_weights;
 	net->nneurons = total_neurons;
 
-	/* Point the pointers to the extra allocated data */
-	net->weight = (double*)((char*)net + sizeof(struct nn_ffnet));
-	net->output = net->weight + net->nweights;
-	net->delta = net->weight + net->nneurons;
-
 	net->hidden_activation = NN_ACTIVATION_SIGMOID;
 	net->output_activation = NN_ACTIVATION_SIGMOID;
 
+	nn_ffnet_set_pointers(net);
+
 	return net;
+}
+
+struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net)
+{
+	assert(net);
+
+	size_t delta_size = (net->nneurons - net->ninputs);
+	size_t extra = net->nweights + net->nneurons + delta_size;
+	size_t bytes = sizeof(struct nn_ffnet) + sizeof(double) * extra;
+	assert(bytes > sizeof(struct nn_ffnet));
+
+	struct nn_ffnet *new = malloc(bytes);
+	assert(new);
+
+	memcpy(new, net, bytes);
+
+	nn_ffnet_set_pointers(new);
+
+	return new;
 }
 
 void nn_ffnet_destroy(struct nn_ffnet *net)
@@ -86,4 +111,27 @@ void nn_ffnet_randomize(struct nn_ffnet *net)
 	for(int i = 0; i < net->nweights; i++){
 		net->weight[i] = nn_rand(-0.5, 0.5);
 	}
+}
+
+void nn_ffnet_set_activations(struct nn_ffnet *net,
+			      enum nn_activation hidden,
+			      enum nn_activation output)
+{
+	assert(net);
+
+	net->hidden_activation = hidden;
+	net->output_activation = output;
+}
+
+double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
+{
+	return NULL;
+}
+
+void nn_ffnet_train(struct nn_ffnet *net,
+		    const double *inputs,
+		    const double *wanted_outputs,
+		    double learning_rate)
+{
+	
 }
