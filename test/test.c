@@ -35,11 +35,73 @@ TEST nn_copy()
 	ASSERT(copy);
 
 	for(int i = 0; i < net->nweights; i++){
-		ASSERT_EQ_FMT(copy->weight[i], net->weight[i], "%g");
+		ASSERT_EQ_FMT(net->weight[i], copy->weight[i], "%g");
 	}
 
 	nn_ffnet_destroy(copy);
 	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_run()
+{
+	double input[] = {1};
+
+	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_SIGMOID,
+				 NN_ACTIVATION_SIGMOID);
+
+	double *results = nn_ffnet_run(net, input);
+	ASSERT(results);
+
+	ASSERT_EQ_FMT(0.5, results[0], "%g");
+
+	nn_ffnet_destroy(net);
+
+	net = nn_ffnet_create(1, 2, 1, 2);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_SIGMOID);
+
+	results = nn_ffnet_run(net, input);
+	ASSERT(results);
+
+	ASSERT_EQ_FMT(0.5, results[0], "%g");
+
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_run_relu()
+{
+	struct nn_ffnet *net = nn_ffnet_create(3, 0, 3, 0);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	double input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
+	double *results = nn_ffnet_run(net, input);
+	ASSERT(results);
+
+	for(int i = 0; i < net->nweights; i++){
+		net->weight[i] = 1.0;
+	}
+
+	ASSERT_EQ_FMT(0.0, results[0], "%g");
+	for(int i = 1; i < sizeof(input) / sizeof(double); i++){
+		ASSERT_EQ_FMT(input[i], results[i], "%g");
+		
+	}
+
+	nn_ffnet_destroy(net);
+
 	PASS();
 }
 
@@ -48,12 +110,18 @@ SUITE(nn_general)
 	RUN_TEST(nn_create_and_destroy);
 	RUN_TEST(nn_randomize);
 	RUN_TEST(nn_copy);
+	RUN_TEST(nn_run);
+	RUN_TEST(nn_run_relu);
 }
 
 TEST nn_xor()
 {
 	struct nn_ffnet *net = nn_ffnet_create(2, 2, 1, 1);
 	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_SIGMOID,
+				 NN_ACTIVATION_SIGMOID);
 
 	nn_ffnet_randomize(net);
 
@@ -70,8 +138,7 @@ TEST nn_xor()
 		double *results = nn_ffnet_run(net, input[i]);
 		ASSERT(results);
 
-		double diff = abs(output[i] - results[0]);
-		ASSERT(diff < 0.1);
+		ASSERT_IN_RANGE(output[i], results[0], 0.1);
 	}
 
 	PASS();

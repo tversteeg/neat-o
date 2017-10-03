@@ -4,11 +4,12 @@
 
 enum nn_activation{
 	NN_ACTIVATION_SIGMOID,
+	NN_ACTIVATION_FAST_SIGMOID,
 	NN_ACTIVATION_RELU
 };
 
 struct nn_ffnet{
-	size_t ninputs, nhiddens, noutputs, hidden_layer_count;
+	size_t ninputs, nhiddens, noutputs, nhidden_layers;
 	size_t nweights, nneurons;
 
 	double *weight, *output, *delta;
