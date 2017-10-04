@@ -54,24 +54,14 @@ TEST nn_run()
 				 NN_ACTIVATION_SIGMOID,
 				 NN_ACTIVATION_SIGMOID);
 
+	for(int i = 0; i < net->nweights; i++){
+		net->weight[i] = 1.0;
+	}
+
 	double *results = nn_ffnet_run(net, input);
 	ASSERT(results);
 
-	ASSERT_EQ_FMT(0.5, results[0], "%g");
-
-	nn_ffnet_destroy(net);
-
-	net = nn_ffnet_create(1, 2, 1, 2);
-	ASSERT(net);
-
-	nn_ffnet_set_activations(net,
-				 NN_ACTIVATION_RELU,
-				 NN_ACTIVATION_SIGMOID);
-
-	results = nn_ffnet_run(net, input);
-	ASSERT(results);
-
-	ASSERT_EQ_FMT(0.5, results[0], "%g");
+	ASSERT_IN_RANGE(0.25, results[0], 0.1);
 
 	nn_ffnet_destroy(net);
 	PASS();
@@ -79,7 +69,7 @@ TEST nn_run()
 
 TEST nn_run_relu()
 {
-	struct nn_ffnet *net = nn_ffnet_create(3, 0, 3, 0);
+	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,
@@ -87,16 +77,17 @@ TEST nn_run_relu()
 				 NN_ACTIVATION_RELU);
 
 	double input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-	double *results = nn_ffnet_run(net, input);
-	ASSERT(results);
+	double expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
 
 	for(int i = 0; i < net->nweights; i++){
 		net->weight[i] = 1.0;
 	}
 
-	ASSERT_EQ_FMT(0.0, results[0], "%g");
-	for(int i = 1; i < sizeof(input) / sizeof(double); i++){
-		ASSERT_EQ_FMT(input[i], results[i], "%g");
+	for(int i = 0; i < sizeof(input) / sizeof(double); i++){
+		double *results = nn_ffnet_run(net, input + i);
+		ASSERT(results);
+
+		ASSERT_EQ_FMT(expected_output[i], results[i], "%g");
 		
 	}
 

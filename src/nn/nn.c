@@ -186,39 +186,40 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 	for(size_t i = 0; i < net->nhidden_layers; i++){
 
 		/* First get all the inputs, then get all the hidden layers */
-		size_t weights = net->nhiddens;
+		size_t nweights = net->nhiddens;
 		if(i == 0){
-			weights = net->ninputs;
+			nweights = net->ninputs;
 		}
 
 		for(size_t j = 0; j < net->nhiddens; j++){
 			double sum = *weight++ * -1.0;
-			for(size_t k = 0; k < weights; k++){
+			for(size_t k = 0; k < nweights; k++){
 				sum += *weight++ * input[k];
 			}
 
 			*output++ = nn_activate(net->hidden_activation, sum);
 		}
 
-		input += weights;
+		input += nweights;
 	}
 
 	double *ret = output;
 
 	/* Calculate output layer */
 	for(size_t i = 0; i < net->noutputs; i++){
-		size_t weights = net->nhiddens;
+		size_t nweights = net->nhiddens;
 		/* Get the input layer if there are no hidden layers */
 		if(net->nhidden_layers == 0){
-			weights = net->ninputs;
+			nweights = net->ninputs;
 		}
 
 		double sum = *weight++ * -1.0;
-		for(size_t j = 0; j < weights; j++){
+		for(size_t j = 0; j < nweights; j++){
 			sum += *weight++ * input[j];
 		}
 
-		*output++ = nn_activate(net->hidden_activation, sum);
+		*output++ = nn_activate(net->output_activation, sum);
+		printf("%f\n", *(output - 1));
 	}
 
 	assert(weight - net->weight == net->nweights);
