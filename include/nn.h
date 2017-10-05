@@ -14,6 +14,8 @@ struct nn_ffnet{
 
 	double *weight, *output, *delta;
 
+	double bias;
+
 	enum nn_activation hidden_activation, output_activation;
 };
 
@@ -43,6 +45,8 @@ void nn_ffnet_destroy(struct nn_ffnet *net);
 void nn_ffnet_set_activations(struct nn_ffnet *net,
 			      enum nn_activation hidden,
 			      enum nn_activation output);
+
+void nn_ffnet_set_bias(struct nn_ffnet *net, double bias);
 
 /* Give all the weights in the feedforward network a value between -1 & 1 */
 void nn_ffnet_randomize(struct nn_ffnet *net);

@@ -45,7 +45,7 @@ TEST nn_copy()
 
 TEST nn_run()
 {
-	double input[] = {1};
+	double input = 1;
 
 	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
 	ASSERT(net);
@@ -54,14 +54,18 @@ TEST nn_run()
 				 NN_ACTIVATION_SIGMOID,
 				 NN_ACTIVATION_SIGMOID);
 
+	/* Set the bias to zero and the weight to 1.0 to 
+	 * easily calculate the result */
+	nn_ffnet_set_bias(net, 0.0);
 	for(int i = 0; i < net->nweights; i++){
 		net->weight[i] = 1.0;
 	}
 
-	double *results = nn_ffnet_run(net, input);
+	double *results = nn_ffnet_run(net, &input);
 	ASSERT(results);
 
-	ASSERT_IN_RANGE(0.25, results[0], 0.1);
+	/* The sigmoid of 1.0 should be ~0.73 */
+	ASSERT_IN_RANGE(0.73, results[0], 0.1);
 
 	nn_ffnet_destroy(net);
 	PASS();
@@ -76,22 +80,54 @@ TEST nn_run_relu()
 				 NN_ACTIVATION_RELU,
 				 NN_ACTIVATION_RELU);
 
-	double input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-	double expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-
+	/* Set the bias to zero and the weight to 1.0 to 
+	 * easily calculate the result */
+	nn_ffnet_set_bias(net, 0.0);
 	for(int i = 0; i < net->nweights; i++){
 		net->weight[i] = 1.0;
 	}
+
+	double input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
+	double expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
 
 	for(int i = 0; i < sizeof(input) / sizeof(double); i++){
 		double *results = nn_ffnet_run(net, input + i);
 		ASSERT(results);
 
-		ASSERT_EQ_FMT(expected_output[i], results[i], "%g");
+		ASSERT_EQ_FMT(expected_output[i], results[0], "%g");
 		
 	}
 
 	nn_ffnet_destroy(net);
+
+	PASS();
+}
+
+TEST nn_run_xor()
+{
+	struct nn_ffnet *net = nn_ffnet_create(2, 2, 1, 1);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	const double input[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
+	const double output[4] = {0, 1, 1, 0};
+
+	/* From left to right: bias, left, right
+	 * From top to bottom: hidden node 1, hidden node 2 and output */
+	const double weights[] = { 0.0, -1.0, 1.0,
+				   0.0, 1.0, -1.0,
+				   0.0, 1.0, 1.0 };
+	memcpy(net->weight, weights, sizeof(weights));
+
+	for(int i = 0; i < 4; i++){
+		double *results = nn_ffnet_run(net, input[i]);
+		ASSERT(results);
+
+		ASSERT_EQ_FMT(output[i], results[0], "%g");
+	}
 
 	PASS();
 }
@@ -103,9 +139,10 @@ SUITE(nn_general)
 	RUN_TEST(nn_copy);
 	RUN_TEST(nn_run);
 	RUN_TEST(nn_run_relu);
+	RUN_TEST(nn_run_xor);
 }
 
-TEST nn_xor()
+TEST nn_bp_xor()
 {
 	struct nn_ffnet *net = nn_ffnet_create(2, 2, 1, 1);
 	ASSERT(net);
@@ -113,6 +150,13 @@ TEST nn_xor()
 	nn_ffnet_set_activations(net,
 				 NN_ACTIVATION_SIGMOID,
 				 NN_ACTIVATION_SIGMOID);
+
+	/* Set the bias to zero and the weight to 1.0 to 
+	 * easily calculate the result */
+	nn_ffnet_set_bias(net, 0.0);
+	for(int i = 0; i < net->nweights; i++){
+		net->weight[i] = 1.0;
+	}
 
 	nn_ffnet_randomize(net);
 
@@ -137,13 +181,15 @@ TEST nn_xor()
 
 SUITE(nn_backpropagation_xor)
 {
-	RUN_TEST(nn_xor);
+	RUN_TEST(nn_bp_xor);
 }
 
 GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv)
 {
+	srand(time(NULL));
+
 	GREATEST_MAIN_BEGIN();
 
 	RUN_SUITE(nn_general);
