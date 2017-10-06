@@ -45,7 +45,7 @@ TEST nn_copy()
 
 TEST nn_run()
 {
-	double input = 1;
+	float input = 1;
 
 	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
 	ASSERT(net);
@@ -61,7 +61,7 @@ TEST nn_run()
 		net->weight[i] = 1.0;
 	}
 
-	double *results = nn_ffnet_run(net, &input);
+	float *results = nn_ffnet_run(net, &input);
 	ASSERT(results);
 
 	/* The sigmoid of 1.0 should be ~0.73 */
@@ -87,11 +87,11 @@ TEST nn_run_relu()
 		net->weight[i] = 1.0;
 	}
 
-	double input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-	double expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
+	float input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
+	float expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
 
-	for(int i = 0; i < sizeof(input) / sizeof(double); i++){
-		double *results = nn_ffnet_run(net, input + i);
+	for(int i = 0; i < sizeof(input) / sizeof(float); i++){
+		float *results = nn_ffnet_run(net, input + i);
 		ASSERT(results);
 
 		ASSERT_EQ_FMT(expected_output[i], results[0], "%g");
@@ -112,18 +112,18 @@ TEST nn_run_xor()
 				 NN_ACTIVATION_RELU,
 				 NN_ACTIVATION_RELU);
 
-	const double input[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
-	const double output[4] = {0, 1, 1, 0};
+	const float input[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
+	const float output[4] = {0, 1, 1, 0};
 
 	/* From left to right: bias, left, right
 	 * From top to bottom: hidden node 1, hidden node 2 and output */
-	const double weights[] = { 0.0, -1.0, 1.0,
+	const float weights[] = { 0.0, -1.0, 1.0,
 				   0.0, 1.0, -1.0,
 				   0.0, 1.0, 1.0 };
 	memcpy(net->weight, weights, sizeof(weights));
 
 	for(int i = 0; i < 4; i++){
-		double *results = nn_ffnet_run(net, input[i]);
+		float *results = nn_ffnet_run(net, input[i]);
 		ASSERT(results);
 
 		ASSERT_EQ_FMT(output[i], results[0], "%g");
@@ -132,7 +132,27 @@ TEST nn_run_xor()
 	PASS();
 }
 
-SUITE(nn_general)
+TEST nn_time_big()
+{
+	struct nn_ffnet *net = nn_ffnet_create(1024, 512, 10, 10);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	const float inputs[4096] = { 1.0 };
+	
+	for(int i = 0; i < 100; i++){
+		nn_ffnet_run(net, inputs);
+	}
+	
+	nn_ffnet_randomize(net);
+
+	PASS();
+}
+
+SUITE(nn)
 {
 	RUN_TEST(nn_create_and_destroy);
 	RUN_TEST(nn_randomize);
@@ -142,46 +162,9 @@ SUITE(nn_general)
 	RUN_TEST(nn_run_xor);
 }
 
-TEST nn_bp_xor()
+SUITE(nn_time)
 {
-	struct nn_ffnet *net = nn_ffnet_create(2, 2, 1, 1);
-	ASSERT(net);
-
-	nn_ffnet_set_activations(net,
-				 NN_ACTIVATION_SIGMOID,
-				 NN_ACTIVATION_SIGMOID);
-
-	/* Set the bias to zero and the weight to 1.0 to 
-	 * easily calculate the result */
-	nn_ffnet_set_bias(net, 0.0);
-	for(int i = 0; i < net->nweights; i++){
-		net->weight[i] = 1.0;
-	}
-
-	nn_ffnet_randomize(net);
-
-	const double input[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
-	const double output[4] = {0, 1, 1, 0};
-
-	for(int i = 0; i < 300; i++){
-		for(int j = 0; j < 4; j++){
-			nn_ffnet_train(net, input[j], output + j, 3);
-		}
-	}
-
-	for(int i = 0; i < 4; i++){
-		double *results = nn_ffnet_run(net, input[i]);
-		ASSERT(results);
-
-		ASSERT_IN_RANGE(output[i], results[0], 0.1);
-	}
-
-	PASS();
-}
-
-SUITE(nn_backpropagation_xor)
-{
-	RUN_TEST(nn_bp_xor);
+	RUN_TEST(nn_time_big);
 }
 
 GREATEST_MAIN_DEFS();
@@ -192,8 +175,8 @@ int main(int argc, char **argv)
 
 	GREATEST_MAIN_BEGIN();
 
-	RUN_SUITE(nn_general);
-	RUN_SUITE(nn_backpropagation_xor);
+	RUN_SUITE(nn);
+	RUN_SUITE(nn_time);
 
 	GREATEST_MAIN_END();
 
@@ -204,21 +187,21 @@ int main(int argc, char **argv)
 
 #include <neat.h>
 
-static double xor_inputs[4][2] = {{0.0, 0.0},
+static float xor_inputs[4][2] = {{0.0, 0.0},
 				  {0.0, 1.0},
 				  {1.0, 0.0},
 				  {1.0, 1.0}};
-static double xor_outputs[4] = {0.0, 1.0, 1.0, 0.0};
+static float xor_outputs[4] = {0.0, 1.0, 1.0, 0.0};
 
-static double calculate_fitness(neat_ffnet_t net)
+static float calculate_fitness(neat_ffnet_t net)
 {
-	double fitness = 4.0;
+	float fitness = 4.0;
 	for(int i = 0; i < 4; i++){
 		neat_ffnet_predict(net, xor_inputs[i]);
-		double *outputs = neat_ffnet_get_outputs(net);
+		float *outputs = neat_ffnet_get_outputs(net);
 		neat_ffnet_reset(net);
 
-		double diff = outputs[0] - xor_outputs[i];
+		float diff = outputs[0] - xor_outputs[i];
 		fitness -= diff * diff;
 		free(outputs);
 	}

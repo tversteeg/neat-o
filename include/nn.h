@@ -12,9 +12,9 @@ struct nn_ffnet{
 	size_t ninputs, nhiddens, noutputs, nhidden_layers;
 	size_t nweights, nneurons;
 
-	double *weight, *output, *delta;
+	float *weight, *output;
 
-	double bias;
+	float bias;
 
 	enum nn_activation hidden_activation, output_activation;
 };
@@ -46,7 +46,7 @@ void nn_ffnet_set_activations(struct nn_ffnet *net,
 			      enum nn_activation hidden,
 			      enum nn_activation output);
 
-void nn_ffnet_set_bias(struct nn_ffnet *net, double bias);
+void nn_ffnet_set_bias(struct nn_ffnet *net, float bias);
 
 /* Give all the weights in the feedforward network a value between -1 & 1 */
 void nn_ffnet_randomize(struct nn_ffnet *net);
@@ -55,23 +55,7 @@ void nn_ffnet_randomize(struct nn_ffnet *net);
  * inputs:	array of input values, assumed to be the same amount as
  * 		input_count as supplied to the nn_ffnet_create function
  *
- * returns the outputs as an array of doubles, the length of the array is
+ * returns the outputs as an array of floats, the length of the array is
  * output_count as supplied to the nn_ffnet_create function
  */
-double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs);
-
-/* Train the network using a single backpropagation update
- * inputs:		array of input values, assumed to be the same amount as
- * 			input_count as supplied to the nn_ffnet_create function
- * wanted_outputs:	array of desired output values, assumed to be the same
- * 			amount as output_count as supplied to the
- * 			nn_ffnet_create function
- * learning_rate:	speed in which the network will learn from the error,
- * 			a speed which is too low will make the network learn
- * 			very slowly, and a speed which is too high will make the
- * 			network learn incorrectly
- */
-void nn_ffnet_train(struct nn_ffnet *net,
-		    const double *inputs,
-		    const double *wanted_outputs,
-		    double learning_rate);
+float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs);

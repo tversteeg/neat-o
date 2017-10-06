@@ -6,7 +6,7 @@
 #include <string.h>
 #include <assert.h>
 
-static inline double nn_sigmoid(double input)
+static inline float nn_sigmoid(float input)
 {
 	if(input < -45.0){
 		return 0;
@@ -17,12 +17,12 @@ static inline double nn_sigmoid(double input)
 	return 1.0 / (1 + exp(-input));
 }
 
-static inline double nn_fast_sigmoid(double input)
+static inline float nn_fast_sigmoid(float input)
 {
 	return input / (1 + fabs(input)); 
 }
 
-static inline double nn_relu(double input)
+static inline float nn_relu(float input)
 {
 	if(input < 0){
 		return 0.0;
@@ -31,16 +31,16 @@ static inline double nn_relu(double input)
 	return input;
 }
 
-static inline double nn_rand(double start, double end)
+static inline float nn_rand(float start, float end)
 {
 	assert(start < end);
 
-	double range = end - start;
+	float range = end - start;
 
-	return (rand() / (double)RAND_MAX) * range + start;
+	return (rand() / (float)RAND_MAX) * range + start;
 }
 
-static inline double nn_activate(enum nn_activation activation, double input)
+static inline float nn_activate(enum nn_activation activation, float input)
 {
 	switch(activation){
 		case NN_ACTIVATION_SIGMOID:
@@ -61,9 +61,8 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 {
 	assert(net);
 
-	net->weight = (double*)((char*)net + sizeof(struct nn_ffnet));
+	net->weight = (float*)((char*)net + sizeof(struct nn_ffnet));
 	net->output = net->weight + net->nweights;
-	net->delta = net->output + net->nneurons;
 }
 
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
@@ -97,12 +96,10 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 			       hidden_count * hidden_layer_count +
 			       output_count;
 
-	size_t total_deltas = total_neurons - input_count;
-
-	size_t total_items = total_weights + total_neurons + total_deltas;
+	size_t total_items = total_weights + total_neurons;
 
 	/* Allocate the struct with extra bytes behind it for the data */
-	size_t items_bytes = sizeof(double) * total_items;
+	size_t items_bytes = sizeof(float) * total_items;
 	struct nn_ffnet *net = malloc(sizeof(struct nn_ffnet) + items_bytes);
 	assert(net);
 
@@ -134,7 +131,7 @@ struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net)
 
 	size_t delta_size = (net->nneurons - net->ninputs);
 	size_t extra = net->nweights + net->nneurons + delta_size;
-	size_t bytes = sizeof(struct nn_ffnet) + sizeof(double) * extra;
+	size_t bytes = sizeof(struct nn_ffnet) + sizeof(float) * extra;
 	assert(bytes > sizeof(struct nn_ffnet));
 
 	struct nn_ffnet *new = malloc(bytes);
@@ -173,14 +170,14 @@ void nn_ffnet_set_activations(struct nn_ffnet *net,
 	net->output_activation = output;
 }
 
-void nn_ffnet_set_bias(struct nn_ffnet *net, double bias)
+void nn_ffnet_set_bias(struct nn_ffnet *net, float bias)
 {
 	assert(net);
 
 	net->bias = bias;
 }
 
-double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
+float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs)
 {
 	assert(net);
 
@@ -188,12 +185,12 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 	 * to make a special case for the input layer, it will look like this:
 	 * [ **struct**, weight.. , input.., output.., **delta** ]
 	 */
-	double *input = net->output;
-	memcpy(input, inputs, sizeof(double) * net->ninputs);
+	float *input = net->output;
+	memcpy(input, inputs, sizeof(float) * net->ninputs);
 
 	/* Calculate hidden layers */
-	double *weight = net->weight;
-	double *output = net->output + net->ninputs;
+	float *weight = net->weight;
+	float *output = net->output + net->ninputs;
 	for(size_t i = 0; i < net->nhidden_layers; i++){
 		/* First get all the inputs, then get all the hidden layers */
 		size_t nweights = net->nhiddens;
@@ -203,13 +200,12 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 
 		for(size_t j = 0; j < net->nhiddens; j++){
 			/* Start with the bias */
-			double sum = *weight++ * net->bias;
+			float sum = *weight++ * net->bias;
 
 			/* Sum the rest of the weights */
 			for(size_t k = 0; k < nweights; k++){
-				sum += weight[k] * input[k];
+				sum += *weight++ * input[k];
 			}
-			weight += nweights;
 
 			*output++ = nn_activate(net->hidden_activation, sum);
 		}
@@ -219,7 +215,7 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 
 	/* The return value must be saved because the output pointer is going
 	 * to be changed by the output layer calculation */
-	double *ret = output;
+	float *ret = output;
 
 	size_t nweights = net->nhiddens;
 	/* Get the input layer if there are no hidden layers */
@@ -230,13 +226,12 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 	/* Calculate output layer */
 	for(size_t i = 0; i < net->noutputs; i++){
 		/* Start with the bias */
-		double sum = *weight++ * net->bias;
+		float sum = *weight++ * net->bias;
 
 		/* Sum the rest of the weights */
 		for(size_t j = 0; j < nweights; j++){
-			sum += weight[j] * input[j];
+			sum += *weight++ * input[j];
 		}
-		weight += nweights;
 
 		*output++ = nn_activate(net->output_activation, sum);
 	}
@@ -245,12 +240,4 @@ double *nn_ffnet_run(struct nn_ffnet *net, const double *inputs)
 	assert(output - net->output == net->nneurons);
 
 	return ret;
-}
-
-void nn_ffnet_train(struct nn_ffnet *net,
-		    const double *inputs,
-		    const double *wanted_outputs,
-		    double learning_rate)
-{
-	
 }
