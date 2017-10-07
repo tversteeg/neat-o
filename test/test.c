@@ -1,6 +1,21 @@
 #include <nn.h>
+#include <neat.h>
 
 #include "greatest.h"
+
+TEST neat_create_and_destroy()
+{
+	struct neat_config config = {
+		.network_inputs = 1,
+		.network_outputs = 1,
+		.population_size = 1
+	};
+	neat_pop_t population = neat_population_create(config);
+	ASSERT(population);
+
+	neat_population_destroy(population);
+	PASS();
+}
 
 TEST nn_create_and_destroy()
 {
@@ -118,8 +133,8 @@ TEST nn_run_xor()
 	/* From left to right: bias, left, right
 	 * From top to bottom: hidden node 1, hidden node 2 and output */
 	const float weights[] = { 0.0, -1.0, 1.0,
-				   0.0, 1.0, -1.0,
-				   0.0, 1.0, 1.0 };
+				  0.0, 1.0, -1.0,
+				  0.0, 1.0, 1.0 };
 	memcpy(net->weight, weights, sizeof(weights));
 
 	for(int i = 0; i < 4; i++){
@@ -167,6 +182,11 @@ SUITE(nn_time)
 	RUN_TEST(nn_time_big);
 }
 
+SUITE(neat)
+{
+	RUN_TEST(neat_create_and_destroy);
+}
+
 GREATEST_MAIN_DEFS();
 
 int main(int argc, char **argv)
@@ -177,6 +197,7 @@ int main(int argc, char **argv)
 
 	RUN_SUITE(nn);
 	RUN_SUITE(nn_time);
+	RUN_SUITE(neat);
 
 	GREATEST_MAIN_END();
 

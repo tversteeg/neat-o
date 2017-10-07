@@ -20,12 +20,7 @@ struct neat_config{
 
 	/* Neural Networks */
 	size_t network_inputs, network_outputs;
-	size_t network_max
-} neat_default_config = {
-	.population_size = 20,
-	.reset_on_extinction = true,
-	.crossover_probability = 0.15,
-	.minimum_ticks_alive = 100
+	size_t network_hidden_nodes, network_hidden_layers;
 };
 
 neat_pop_t neat_population_create(struct neat_config config);

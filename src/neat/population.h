@@ -10,8 +10,5 @@ struct neat_pop{
 
 	bool solved;
 
-	struct nn_ffnet initial_genome;
-
-	struct neat_species *species;
-	int nspecies;
+	struct nn_ffnet *initial_genome;
 };
