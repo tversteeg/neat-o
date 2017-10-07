@@ -129,26 +129,26 @@ TEST nn_run_xor()
 		ASSERT_EQ_FMT(output[i], results[0], "%g");
 	}
 
+	nn_ffnet_destroy(net);
 	PASS();
 }
 
 TEST nn_time_big()
 {
-	struct nn_ffnet *net = nn_ffnet_create(1024, 512, 10, 10);
+	struct nn_ffnet *net = nn_ffnet_create(1024, 512, 20, 10);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,
 				 NN_ACTIVATION_RELU,
 				 NN_ACTIVATION_RELU);
 
-	const float inputs[4096] = { 1.0 };
+	const float inputs[1024] = { 1.0 };
 	
 	for(int i = 0; i < 100; i++){
 		nn_ffnet_run(net, inputs);
 	}
-	
-	nn_ffnet_randomize(net);
 
+	nn_ffnet_destroy(net);
 	PASS();
 }
 

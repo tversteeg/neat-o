@@ -3,45 +3,30 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include <nn.h>
+
 typedef void* neat_pop_t;
-typedef void* neat_genome_t;
-typedef void* neat_ffnet_t;
-
-enum neat_fitness_criterion{
-	NEAT_FITNESS_CRITERION_MAX,
-	NEAT_FITNESS_CRITERION_MIN,
-	NEAT_FITNESS_CRITERION_MEAN
-};
-
-enum neat_activation_option{
-	NEAT_ACTIVATION_SIGMOID
-};
 
 struct neat_config{
 	/* NEAT */
-	enum neat_fitness_criterion fitness_criterion;
-	double fitness_treshold;
-	int population_size;
+	size_t population_size;
 	bool reset_on_extinction;
 
-	int input_genome_topo, output_genome_topo;
-	int max_hidden_layers, max_hidden_layer_neurons;
+	/* Species */
+	double species_crossover_probability;
 
-	/* Default Genome */
-	enum neat_activation_option activation_default, activation_option;
+	/* Organisms */
+	size_t organism_minimum_ticks_alive;
+
+	/* Neural Networks */
+	size_t network_inputs, network_outputs;
+	size_t network_max
+} neat_default_config = {
+	.population_size = 20,
+	.reset_on_extinction = true,
+	.crossover_probability = 0.15,
+	.minimum_ticks_alive = 100
 };
 
 neat_pop_t neat_population_create(struct neat_config config);
 void neat_population_destroy(neat_pop_t population);
-
-neat_genome_t neat_run(neat_pop_t population,
-		       double(*fitness_func)(neat_ffnet_t net),
-		       int generations);
-
-
-void neat_ffnet_predict(neat_ffnet_t network, const double *inputs);
-double *neat_ffnet_get_outputs(neat_ffnet_t network);
-double neat_ffnet_get_output(neat_ffnet_t network, size_t index);
-void neat_ffnet_reset(neat_ffnet_t network);
-
-bool neat_is_solved(neat_pop_t population);

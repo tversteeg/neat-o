@@ -65,6 +65,7 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 	net->output = net->weight + net->nweights;
 }
 
+
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
 				 size_t hidden_count,
 				 size_t output_count,
@@ -129,8 +130,7 @@ struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net)
 {
 	assert(net);
 
-	size_t delta_size = (net->nneurons - net->ninputs);
-	size_t extra = net->nweights + net->nneurons + delta_size;
+	size_t extra = net->nweights + net->nneurons;
 	size_t bytes = sizeof(struct nn_ffnet) + sizeof(float) * extra;
 	assert(bytes > sizeof(struct nn_ffnet));
 

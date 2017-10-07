@@ -20,17 +20,17 @@ struct nn_ffnet{
 };
 
 /* Create a new feedforward neural net, the activation functions for the hidden
- * and output layers are set by default to NN_ACTIVATION_SIGMOID
- * input_count: 	maximum amount of input nodes
- * hidden_count:	maximum amount of hidden nodes per layer
- * output_count:	maximum amount of output nodes
- * hidden_layer_count:	amount of layers for the hidden nodes, total amount of
- * 			hidden nodes is hidden_count * hidden_layer_count
+ * and output layers are set by default to NN_ACTIVATION_SIGMOID and the bias
+ * to -1.0
+ * max_input_count: 		maximum amount of input nodes
+ * max_hidden_count:		maximum amount of hidden nodes per layer
+ * max_output_count:		maximum amount of output nodes
+ * max_hidden_layer_count:	maximum amount of layers for the hidden nodes
  */
-struct nn_ffnet *nn_ffnet_create(size_t input_count,
-				 size_t hidden_count,
-				 size_t output_count,
-				 size_t hidden_layer_count);
+struct nn_ffnet *nn_ffnet_create(size_t max_input_count,
+				 size_t max_hidden_count,
+				 size_t max_output_count,
+				 size_t max_hidden_layer_count);
 
 /* Copy the feedforward network into a newly allocated one */
 struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net);
@@ -55,7 +55,7 @@ void nn_ffnet_randomize(struct nn_ffnet *net);
  * inputs:	array of input values, assumed to be the same amount as
  * 		input_count as supplied to the nn_ffnet_create function
  *
- * returns the outputs as an array of floats, the length of the array is
+ * return the outputs as an array of floats, the length of the array is
  * output_count as supplied to the nn_ffnet_create function
  */
 float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs);
