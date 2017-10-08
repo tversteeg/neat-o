@@ -10,10 +10,10 @@ TEST neat_create_and_destroy()
 		.network_outputs = 1,
 		.population_size = 1
 	};
-	neat_pop_t population = neat_population_create(config);
-	ASSERT(population);
+	neat_t neat = neat_create(config);
+	ASSERT(neat);
 
-	neat_population_destroy(population);
+	neat_destroy(neat);
 	PASS();
 }
 
@@ -110,7 +110,6 @@ TEST nn_run_relu()
 		ASSERT(results);
 
 		ASSERT_EQ_FMT(expected_output[i], results[0], "%g");
-		
 	}
 
 	nn_ffnet_destroy(net);
@@ -133,8 +132,8 @@ TEST nn_run_xor()
 	/* From left to right: bias, left, right
 	 * From top to bottom: hidden node 1, hidden node 2 and output */
 	const float weights[] = { 0.0, -1.0, 1.0,
-				  0.0, 1.0, -1.0,
-				  0.0, 1.0, 1.0 };
+		0.0, 1.0, -1.0,
+		0.0, 1.0, 1.0 };
 	memcpy(net->weight, weights, sizeof(weights));
 
 	for(int i = 0; i < 4; i++){
@@ -158,7 +157,7 @@ TEST nn_time_big()
 				 NN_ACTIVATION_RELU);
 
 	const float inputs[1024] = { 1.0 };
-	
+
 	for(int i = 0; i < 100; i++){
 		nn_ffnet_run(net, inputs);
 	}
@@ -209,9 +208,9 @@ int main(int argc, char **argv)
 #include <neat.h>
 
 static float xor_inputs[4][2] = {{0.0, 0.0},
-				  {0.0, 1.0},
-				  {1.0, 0.0},
-				  {1.0, 1.0}};
+	{0.0, 1.0},
+	{1.0, 0.0},
+	{1.0, 1.0}};
 static float xor_outputs[4] = {0.0, 1.0, 1.0, 0.0};
 
 static float calculate_fitness(neat_ffnet_t net)
