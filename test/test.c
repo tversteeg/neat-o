@@ -3,6 +3,9 @@
 
 #include "greatest.h"
 
+const float xor_inputs[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
+const float xor_outputs[4] = {0, 1, 1, 0};
+
 TEST neat_create_and_destroy()
 {
 	struct neat_config config = {
@@ -12,6 +15,36 @@ TEST neat_create_and_destroy()
 	};
 	neat_t neat = neat_create(config);
 	ASSERT(neat);
+
+	neat_destroy(neat);
+	PASS();
+}
+
+TEST neat_xor()
+{
+	struct neat_config config = {
+		.network_inputs = 2,
+		.network_outputs = 1,
+		.network_hidden_nodes = 10,
+		.network_hidden_layers = 4,
+		.population_size = 20
+	};
+	neat_t neat = neat_create(config);
+	ASSERT(neat);
+
+	/* Epochs */
+	for(int i = 0; i < 10000; i++){
+		/* Organisms */
+		for(int j = 0; j < config.population_size; j++){
+			/* XOR sets */
+			for(int k = 0; k < 4; k++){
+				const float *results = neat_run(neat,
+								j,
+								xor_inputs[k]);
+				ASSERT(results);
+			}
+		}
+	}
 
 	neat_destroy(neat);
 	PASS();
@@ -126,9 +159,6 @@ TEST nn_run_xor()
 				 NN_ACTIVATION_RELU,
 				 NN_ACTIVATION_RELU);
 
-	const float input[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
-	const float output[4] = {0, 1, 1, 0};
-
 	/* From left to right: bias, left, right
 	 * From top to bottom: hidden node 1, hidden node 2 and output */
 	const float weights[] = { 0.0, -1.0, 1.0,
@@ -137,10 +167,10 @@ TEST nn_run_xor()
 	memcpy(net->weight, weights, sizeof(weights));
 
 	for(int i = 0; i < 4; i++){
-		float *results = nn_ffnet_run(net, input[i]);
+		float *results = nn_ffnet_run(net, xor_inputs[i]);
 		ASSERT(results);
 
-		ASSERT_EQ_FMT(output[i], results[0], "%g");
+		ASSERT_EQ_FMT(xor_outputs[i], results[0], "%g");
 	}
 
 	nn_ffnet_destroy(net);
@@ -149,7 +179,7 @@ TEST nn_run_xor()
 
 TEST nn_time_big()
 {
-	struct nn_ffnet *net = nn_ffnet_create(1024, 512, 20, 10);
+	struct nn_ffnet *net = nn_ffnet_create(256, 128, 20, 10);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,
@@ -184,6 +214,7 @@ SUITE(nn_time)
 SUITE(neat)
 {
 	RUN_TEST(neat_create_and_destroy);
+	RUN_TEST(neat_xor);
 }
 
 GREATEST_MAIN_DEFS();

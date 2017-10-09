@@ -25,3 +25,7 @@ struct neat_config{
 
 neat_t neat_create(struct neat_config config);
 void neat_destroy(neat_t population);
+
+const float *neat_run(neat_t population,
+		      size_t organism_id,
+		      const float *inputs);

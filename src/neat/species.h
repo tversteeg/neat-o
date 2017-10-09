@@ -10,7 +10,5 @@ struct neat_species{
 	size_t ngenomes;
 };
 
-struct neat_species *neat_species_create(struct neat_config config,
-					 struct nn_ffnet *genome);
-
+struct neat_species *neat_species_create(struct neat_config config);
 void neat_species_destroy(struct neat_species *species);

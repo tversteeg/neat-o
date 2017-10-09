@@ -46,6 +46,9 @@ void nn_ffnet_set_activations(struct nn_ffnet *net,
 			      enum nn_activation hidden,
 			      enum nn_activation output);
 
+/* Set the multiplier of the bias nodes, all hidden layers have 1 bias node
+ * bias:	value to multiple the weight going to the bias nodes with
+ */
 void nn_ffnet_set_bias(struct nn_ffnet *net, float bias);
 
 /* Give all the weights in the feedforward network a value between -1 & 1 */
