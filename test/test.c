@@ -3,8 +3,13 @@
 
 #include "greatest.h"
 
-const float xor_inputs[4][2] = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
-const float xor_outputs[4] = {0, 1, 1, 0};
+const float xor_inputs[4][2] = {
+	{0.0f, 0.0f},
+	{0.0f, 1.0f},
+	{1.0f, 0.0f},
+	{1.0f, 1.0f}
+};
+const float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 
 TEST neat_create_and_destroy()
 {
@@ -25,8 +30,9 @@ TEST neat_xor()
 	struct neat_config config = {
 		.network_inputs = 2,
 		.network_outputs = 1,
-		.network_hidden_nodes = 10,
+		.network_hidden_nodes = 8,
 		.network_hidden_layers = 4,
+
 		.population_size = 20
 	};
 	neat_t neat = neat_create(config);
@@ -37,13 +43,23 @@ TEST neat_xor()
 		/* Organisms */
 		for(int j = 0; j < config.population_size; j++){
 			/* XOR sets */
+			float error = 0.0f;
 			for(int k = 0; k < 4; k++){
 				const float *results = neat_run(neat,
 								j,
 								xor_inputs[k]);
 				ASSERT(results);
+
+				error += abs(results[0] - xor_outputs[k]);
 			}
+
+			float fitness = 4.0 - error;
+			neat_set_fitness(neat, j, fitness * fitness);
+
+			neat_increase_time_alive(neat, j);
 		}
+
+		neat_epoch(neat);
 	}
 
 	neat_destroy(neat);
@@ -179,7 +195,7 @@ TEST nn_run_xor()
 
 TEST nn_time_big()
 {
-	struct nn_ffnet *net = nn_ffnet_create(256, 128, 20, 10);
+	struct nn_ffnet *net = nn_ffnet_create(1024, 256, 64, 4);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,

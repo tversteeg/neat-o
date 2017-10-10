@@ -1,5 +1,6 @@
 #include "population.h"
 
+#include <float.h>
 #include <assert.h>
 
 neat_t neat_create(struct neat_config config)
@@ -16,6 +17,8 @@ neat_t neat_create(struct neat_config config)
 	p->norganisms = config.population_size;
 	p->organisms = malloc(sizeof(struct nn_ffnet*) *
 			       config.population_size);
+	p->organism_fitness = calloc(config.population_size, sizeof(float));
+	p->organism_time_alive = calloc(config.population_size, sizeof(int));
 	assert(p->norganisms);
 
 	/* Create a base organism and copy it for every other one */
@@ -51,6 +54,8 @@ void neat_destroy(neat_t population)
 		nn_ffnet_destroy(p->organisms[i]);
 	}
 	free(p->organisms);
+	free(p->organism_fitness);
+	free(p->organism_time_alive);
 
 	for(size_t i = 0; i < p->nspecies; i++){
 		neat_species_destroy(p->species[i]);
@@ -71,4 +76,48 @@ const float *neat_run(neat_t population,
 	assert(organism_id < p->norganisms);
 
 	return nn_ffnet_run(p->organisms[organism_id], inputs);
+}
+
+void neat_epoch(neat_t population)
+{
+	struct neat_pop *p = population;
+	assert(p);
+
+	/* First find the genome with the worst fitness */
+	size_t worst_organism;
+	bool found_worst = false;
+
+	float worst_fitness = FLT_MAX;
+	for(size_t i = 0; i < p->norganisms; i++){
+		float fitness = p->organism_fitness[i];
+		size_t ticks_alive = p->organism_time_alive[i];
+		if(fitness < worst_fitness &&
+		   ticks_alive > p->conf.organism_minimum_ticks_alive){
+			worst_organism = i;
+			worst_fitness = fitness;
+			found_worst = true;
+		}
+	}
+
+	if(!found_worst){
+		return;
+	}
+}
+
+void neat_set_fitness(neat_t population, size_t organism_id, float fitness)
+{
+	struct neat_pop *p = population;
+	assert(p);
+	assert(organism_id < p->norganisms);
+
+	p->organism_fitness[organism_id] = fitness;
+}
+
+void neat_increase_time_alive(neat_t population, size_t organism_id)
+{
+	struct neat_pop *p = population;
+	assert(p);
+	assert(organism_id < p->norganisms);
+
+	p->organism_time_alive[organism_id]++;
 }

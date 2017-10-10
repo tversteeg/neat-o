@@ -29,3 +29,9 @@ void neat_destroy(neat_t population);
 const float *neat_run(neat_t population,
 		      size_t organism_id,
 		      const float *inputs);
+
+void neat_epoch(neat_t population);
+
+void neat_set_fitness(neat_t population, size_t organism_id, float fitness);
+
+void neat_increase_time_alive(neat_t population, size_t organism_id);

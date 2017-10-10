@@ -10,8 +10,9 @@ struct neat_species *neat_species_create(struct neat_config config)
 	assert(species);
 
 	/* Create all the genomes but don't use them yet */
-	species->ngenomes = config.population_size;
-	species->genomes = calloc(species->ngenomes, sizeof(struct nn_ffnet*));
+	species->ngenomes = 0;
+	species->genomes = calloc(config.population_size,
+				  sizeof(struct nn_ffnet*));
 	assert(species->genomes);
 
 	return species;
