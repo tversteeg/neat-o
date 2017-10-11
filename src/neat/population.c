@@ -3,6 +3,53 @@
 #include <float.h>
 #include <assert.h>
 
+static void neat_reset_genomes(struct neat_pop *p)
+{
+	assert(p);
+
+	/* Create a base genome and copy it for every other one */
+	p->genomes[0] = neat_genome_create(p->conf, p->innovation++);
+
+	for(size_t i = 1; i < p->ngenomes; i++){
+		p->genomes[i] = neat_genome_copy(p->genomes[0]);
+	}
+}
+
+static void neat_create_new_species(struct neat_pop *p)
+{
+	assert(p);
+
+	p->species = realloc(p->species,
+			     sizeof(struct neat_species*) * (p->nspecies + 1));
+	assert(p->species);
+
+	p->species[p->nspecies] = neat_species_create(p->conf);
+	p->nspecies++;
+}
+
+static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
+{
+	assert(p);
+	assert(worst_genome);
+
+	bool found_worst = false;
+
+	float worst_fitness = FLT_MAX;
+	for(size_t i = 0; i < p->ngenomes; i++){
+		struct neat_genome *genome = p->genomes[i];
+
+		float fitness = genome->fitness;
+		if(fitness < worst_fitness &&
+		   genome->time_alive > p->conf.genome_minimum_ticks_alive){
+			*worst_genome = i;
+			worst_fitness = fitness;
+			found_worst = true;
+		}
+	}
+
+	return found_worst;
+}
+
 neat_t neat_create(struct neat_config config)
 {
 	assert(config.population_size > 0);
@@ -12,35 +59,20 @@ neat_t neat_create(struct neat_config config)
 
 	p->solved = false;
 	p->conf = config;
+	p->innovation = 0;
 
-	/* Allocate memory for all the organisms */
-	p->norganisms = config.population_size;
-	p->organisms = malloc(sizeof(struct nn_ffnet*) *
-			       config.population_size);
-	p->organism_fitness = calloc(config.population_size, sizeof(float));
-	p->organism_time_alive = calloc(config.population_size, sizeof(int));
-	assert(p->norganisms);
+	/* Create a genome and copy it n times where n is the population size */
+	p->ngenomes = config.population_size;
+	p->genomes = malloc(sizeof(struct neat_genome*) *
+			    config.population_size);
+	assert(p->ngenomes);
 
-	/* Create a base organism and copy it for every other one */
-	p->organisms[0] = nn_ffnet_create(config.network_inputs,
-					  config.network_hidden_nodes,
-					  config.network_outputs,
-					  config.network_hidden_layers);
-
-	nn_ffnet_set_activations(p->organisms[0],
-				 NN_ACTIVATION_RELU,
-				 NN_ACTIVATION_RELU);
-
-	for(size_t i = 1; i < p->norganisms; i++){
-		p->organisms[i] = nn_ffnet_copy(p->organisms[0]);
-	}
+	neat_reset_genomes(p);
 
 	/* Create the starting species */
-	p->nspecies = 1;
-	p->species = malloc(sizeof(struct neat_species*));
-	assert(p->species);
-
-	p->species[0] = neat_species_create(config);
+	p->nspecies = 0;
+	p->species = NULL;
+	neat_create_new_species(p);
 
 	return p;
 }
@@ -50,32 +82,27 @@ void neat_destroy(neat_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
-	for(size_t i = 0; i < p->norganisms; i++){
-		nn_ffnet_destroy(p->organisms[i]);
+	for(size_t i = 0; i < p->ngenomes; i++){
+		neat_genome_destroy(p->genomes[i]);
 	}
-	free(p->organisms);
-	free(p->organism_fitness);
-	free(p->organism_time_alive);
+	free(p->genomes);
 
 	for(size_t i = 0; i < p->nspecies; i++){
 		neat_species_destroy(p->species[i]);
 	}
 	free(p->species);
 	free(p);
-
-	p = NULL;
 }
 
 const float *neat_run(neat_t population,
-		      size_t organism_id,
+		      size_t genome_id,
 		      const float *inputs)
 {
-	assert(inputs);
 	struct neat_pop *p = population;
 	assert(p);
-	assert(organism_id < p->norganisms);
+	assert(genome_id < p->ngenomes);
 
-	return nn_ffnet_run(p->organisms[organism_id], inputs);
+	return neat_genome_run(p->genomes[genome_id], inputs);
 }
 
 void neat_epoch(neat_t population)
@@ -83,41 +110,36 @@ void neat_epoch(neat_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
-	/* First find the genome with the worst fitness */
-	size_t worst_organism;
-	bool found_worst = false;
-
-	float worst_fitness = FLT_MAX;
-	for(size_t i = 0; i < p->norganisms; i++){
-		float fitness = p->organism_fitness[i];
-		size_t ticks_alive = p->organism_time_alive[i];
-		if(fitness < worst_fitness &&
-		   ticks_alive > p->conf.organism_minimum_ticks_alive){
-			worst_organism = i;
-			worst_fitness = fitness;
-			found_worst = true;
-		}
-	}
-
-	if(!found_worst){
+	size_t worst_genome;
+	if(!neat_find_worst_fitness(p, &worst_genome)){
 		return;
 	}
+
+	float total_avg = 0.0;
+	for(size_t i = 0; i < p->nspecies; i++){
+		/* Remove the worst genome from the species if it contains it */
+		neat_species_remove_genome(p->species[i],
+					   p->genomes[worst_genome]);
+
+		total_avg += neat_species_get_average_fitness(p->species[i]);
+	}
+	total_avg /= (double)p->nspecies;
 }
 
-void neat_set_fitness(neat_t population, size_t organism_id, float fitness)
+void neat_set_fitness(neat_t population, size_t genome_id, float fitness)
 {
 	struct neat_pop *p = population;
 	assert(p);
-	assert(organism_id < p->norganisms);
+	assert(genome_id < p->ngenomes);
 
-	p->organism_fitness[organism_id] = fitness;
+	p->genomes[genome_id]->fitness = fitness;
 }
 
-void neat_increase_time_alive(neat_t population, size_t organism_id)
+void neat_increase_time_alive(neat_t population, size_t genome_id)
 {
 	struct neat_pop *p = population;
 	assert(p);
-	assert(organism_id < p->norganisms);
+	assert(genome_id < p->ngenomes);
 
-	p->organism_time_alive[organism_id]++;
+	p->genomes[genome_id]->time_alive++;
 }

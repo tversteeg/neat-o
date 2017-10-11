@@ -16,7 +16,7 @@ struct neat_config{
 	double species_crossover_probability;
 
 	/* Organisms */
-	size_t organism_minimum_ticks_alive;
+	size_t genome_minimum_ticks_alive;
 
 	/* Neural Networks */
 	size_t network_inputs, network_outputs;
@@ -26,12 +26,10 @@ struct neat_config{
 neat_t neat_create(struct neat_config config);
 void neat_destroy(neat_t population);
 
-const float *neat_run(neat_t population,
-		      size_t organism_id,
-		      const float *inputs);
+const float *neat_run(neat_t population, size_t genome_id, const float *inputs);
 
 void neat_epoch(neat_t population);
 
-void neat_set_fitness(neat_t population, size_t organism_id, float fitness);
+void neat_set_fitness(neat_t population, size_t genome_id, float fitness);
 
-void neat_increase_time_alive(neat_t population, size_t organism_id);
+void neat_increase_time_alive(neat_t population, size_t genome_id);
