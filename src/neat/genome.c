@@ -6,6 +6,8 @@
 struct neat_genome *neat_genome_create(struct neat_config config,
 				       int innovation)
 {
+	assert(innovation > 0);
+
 	struct neat_genome *genome = calloc(1, sizeof(struct neat_genome));
 	assert(genome);
 

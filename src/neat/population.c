@@ -50,6 +50,44 @@ static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
 	return found_worst;
 }
 
+static float neat_get_species_fitness_average(struct neat_pop *p)
+{
+	assert(p);
+
+	float total_avg = 0.0;
+	for(size_t i = 0; i < p->nspecies; i++){
+		total_avg += neat_species_get_average_fitness(p->species[i]);
+	}
+	total_avg /= (double)p->nspecies;
+
+	return total_avg;
+}
+
+static void neat_select_reproduction_species(struct neat_pop *p)
+{
+	assert(p);
+
+	float total_avg = neat_get_species_fitness_average(p);
+
+	float random = (float)rand() / (float)RAND_MAX;
+	for(size_t i = 0; i < p->nspecies; i++){
+		float avg = neat_species_get_average_fitness(p->species[i]);
+		float selection_prob = avg / total_avg;
+
+		/* If we didn't find a match, 
+		 * reduce the chance to find a new one
+		 */
+		if(random > selection_prob){
+			random -= selection_prob;
+			continue;
+		}
+
+		//TODO: do crossover
+
+		break;
+	}
+}
+
 neat_t neat_create(struct neat_config config)
 {
 	assert(config.population_size > 0);
@@ -59,7 +97,7 @@ neat_t neat_create(struct neat_config config)
 
 	p->solved = false;
 	p->conf = config;
-	p->innovation = 0;
+	p->innovation = 1;
 
 	/* Create a genome and copy it n times where n is the population size */
 	p->ngenomes = config.population_size;
@@ -115,15 +153,13 @@ void neat_epoch(neat_t population)
 		return;
 	}
 
-	float total_avg = 0.0;
+	/* Remove the worst genome from the species if it contains it */
 	for(size_t i = 0; i < p->nspecies; i++){
-		/* Remove the worst genome from the species if it contains it */
 		neat_species_remove_genome(p->species[i],
 					   p->genomes[worst_genome]);
-
-		total_avg += neat_species_get_average_fitness(p->species[i]);
 	}
-	total_avg /= (double)p->nspecies;
+
+	neat_select_reproduction_species(p);
 }
 
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness)

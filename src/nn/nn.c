@@ -37,7 +37,7 @@ static inline float nn_rand(float start, float end)
 
 	float range = end - start;
 
-	return (rand() / (float)RAND_MAX) * range + start;
+	return (float)rand() / (float)(RAND_MAX / range) + start;
 }
 
 static inline float nn_activate(enum nn_activation activation, float input)
