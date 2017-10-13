@@ -15,6 +15,17 @@ static void neat_reset_genomes(struct neat_pop *p)
 	}
 }
 
+static void neat_replace_genome(struct neat_pop *p,
+				size_t dest,
+				struct neat_genome *src)
+{
+	assert(p);
+	assert(src);
+
+	neat_genome_destroy(p->genomes[dest]);
+	p->genomes[dest] = neat_genome_copy(src);
+}
+
 static void neat_create_new_species(struct neat_pop *p)
 {
 	assert(p);
@@ -63,26 +74,43 @@ static float neat_get_species_fitness_average(struct neat_pop *p)
 	return total_avg;
 }
 
-static void neat_select_reproduction_species(struct neat_pop *p)
+static void neat_select_reproduction_species(struct neat_pop *p,
+					     size_t worst_genome)
 {
 	assert(p);
 
 	float total_avg = neat_get_species_fitness_average(p);
 
-	float random = (float)rand() / (float)RAND_MAX;
+	float selection_random = (float)rand() / (float)RAND_MAX;
 	for(size_t i = 0; i < p->nspecies; i++){
-		float avg = neat_species_get_average_fitness(p->species[i]);
+		struct neat_species *s = p->species[i];
+
+		/* Ignore empty species */
+		if(s->ngenomes == 0){
+			continue;
+		}
+
+		float avg = neat_species_get_average_fitness(s);
 		float selection_prob = avg / total_avg;
 
 		/* If we didn't find a match, 
 		 * reduce the chance to find a new one
 		 */
-		if(random > selection_prob){
-			random -= selection_prob;
+		if(selection_random > selection_prob){
+			selection_random -= selection_prob;
 			continue;
 		}
 
-		//TODO: do crossover
+		float random = (float)rand() / (float)RAND_MAX;
+		if(random < p->conf.species_crossover_probability){
+			/* Do a crossover */
+			//TODO: do crossover
+		}else{
+			/* Select a random genome from the species */
+			struct neat_genome *g = neat_species_select_genitor(s);
+			neat_replace_genome(p, worst_genome, g);
+		}
+
 
 		break;
 	}
@@ -148,7 +176,7 @@ void neat_epoch(neat_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
-	size_t worst_genome;
+	size_t worst_genome = 0;
 	if(!neat_find_worst_fitness(p, &worst_genome)){
 		return;
 	}
@@ -159,7 +187,7 @@ void neat_epoch(neat_t population)
 					   p->genomes[worst_genome]);
 	}
 
-	neat_select_reproduction_species(p);
+	neat_select_reproduction_species(p, worst_genome);
 }
 
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness)

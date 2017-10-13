@@ -18,5 +18,10 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 					float fitness);
 float neat_species_get_average_fitness(struct neat_species *species);
 
+struct neat_genome *neat_species_select_genitor(struct neat_species *species);
+
+bool neat_species_contains_genome(struct neat_species *species,
+				  struct neat_genome *genome);
+
 void neat_species_remove_genome(struct neat_species *species,
 				struct neat_genome *genome);

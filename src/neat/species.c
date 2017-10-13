@@ -51,6 +51,29 @@ float neat_species_get_average_fitness(struct neat_species *species)
 	return sum_fitness / (float)(species->ngenomes * 2);
 }
 
+struct neat_genome *neat_species_select_genitor(struct neat_species *species)
+{
+	assert(species);
+	assert(species->ngenomes > 0);
+
+	return species->genomes[rand() % species->ngenomes];
+}
+
+bool neat_species_contains_genome(struct neat_species *species,
+				  struct neat_genome *genome)
+{
+	assert(species);
+	assert(genome);
+
+	for(size_t i = 0; i < species->ngenomes; i++){
+		if(species->genomes[i] == genome){
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void neat_species_remove_genome(struct neat_species *species,
 				struct neat_genome *genome)
 {
