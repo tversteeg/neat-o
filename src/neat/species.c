@@ -2,7 +2,8 @@
 
 #include <assert.h>
 
-struct neat_species *neat_species_create(struct neat_config config)
+struct neat_species *neat_species_create(struct neat_config config,
+					 struct neat_genome *base_genome)
 {
 	assert(config.population_size > 0);
 
@@ -10,10 +11,18 @@ struct neat_species *neat_species_create(struct neat_config config)
 	assert(species);
 
 	/* Create all the genomes but don't use them yet */
-	species->ngenomes = 0;
 	species->genomes = calloc(config.population_size,
 				  sizeof(struct neat_genome*));
 	assert(species->genomes);
+
+	if(base_genome == NULL){
+		species->ngenomes = 0;
+	}else{
+		species->ngenomes = config.population_size;
+		for(size_t i = 0; i < species->ngenomes; i++){
+			species->genomes[i] = base_genome;
+		}
+	}
 
 	return species;
 }
@@ -59,19 +68,24 @@ struct neat_genome *neat_species_select_genitor(struct neat_species *species)
 	return species->genomes[rand() % species->ngenomes];
 }
 
-bool neat_species_contains_genome(struct neat_species *species,
-				  struct neat_genome *genome)
+struct neat_genome *neat_species_get_representant(struct neat_species *species)
+{
+	assert(species);
+	assert(species->ngenomes > 0);
+
+	//TODO track the representant, for now just return a random genome
+
+	return species->genomes[rand() % species->ngenomes];
+}
+
+void neat_species_add_genome(struct neat_species *species,
+			     struct neat_genome *genome)
 {
 	assert(species);
 	assert(genome);
 
-	for(size_t i = 0; i < species->ngenomes; i++){
-		if(species->genomes[i] == genome){
-			return true;
-		}
-	}
-
-	return false;
+	species->genomes[species->ngenomes] = genome;
+	species->ngenomes++;
 }
 
 void neat_species_remove_genome(struct neat_species *species,
@@ -88,11 +102,27 @@ void neat_species_remove_genome(struct neat_species *species,
 		/* Put the last genome on this position
 		 * (this will do nothing if it already is the last one)
 		 */
-		species->genomes[i] = species->genomes[species->ngenomes - 1];
 
-		species->genomes[species->ngenomes - 1] = NULL;
-		species->ngenomes--;
+		printf("%p\n", (void*)species->genomes[i]);
+		species->genomes[i] = species->genomes[--species->ngenomes];
+		species->genomes[species->ngenomes] = NULL;
+		printf("%p\n", (void*)species->genomes[i]);
 
 		return;
 	}
+}
+
+bool neat_species_contains_genome(struct neat_species *species,
+				  struct neat_genome *genome)
+{
+	assert(species);
+	assert(genome);
+
+	for(size_t i = 0; i < species->ngenomes; i++){
+		if(species->genomes[i] == genome){
+			return true;
+		}
+	}
+
+	return false;
 }

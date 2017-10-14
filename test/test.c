@@ -1,6 +1,8 @@
 #include <nn.h>
 #include <neat.h>
 
+#include <float.h>
+
 #include "greatest.h"
 
 const float xor_inputs[4][2] = {
@@ -33,10 +35,17 @@ TEST neat_xor()
 		.network_hidden_nodes = 8,
 		.network_hidden_layers = 4,
 
-		.population_size = 20
+		.population_size = 20,
+
+		.species_crossover_probability = 0.2,
+
+		.genome_minimum_ticks_alive = 100,
+		.genome_compatibility_treshold = 0.2
 	};
 	neat_t neat = neat_create(config);
 	ASSERT(neat);
+
+	float smallest_error = FLT_MAX;
 
 	/* Epochs */
 	for(int i = 0; i < 10000; i++){
@@ -53,6 +62,16 @@ TEST neat_xor()
 				error += abs(results[0] - xor_outputs[k]);
 			}
 
+			/* Keep track of the best error */
+			if(error < smallest_error){
+				smallest_error = error;
+			}
+
+			if(error < 0.1){
+				neat_destroy(neat);
+				PASS();
+			}
+
 			float fitness = 4.0 - error;
 			neat_set_fitness(neat, j, fitness * fitness);
 
@@ -63,7 +82,7 @@ TEST neat_xor()
 	}
 
 	neat_destroy(neat);
-	PASS();
+	FAILm("A mutation that solved the xor problem did not occur");
 }
 
 TEST nn_create_and_destroy()

@@ -29,7 +29,7 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 	return genome;
 }
 
-struct neat_genome *neat_genome_copy(struct neat_genome *genome)
+struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 {
 	struct neat_genome *new = malloc(sizeof(struct neat_genome));
 	assert(new);
@@ -67,4 +67,13 @@ void neat_genome_add_random_node(struct neat_genome *genome, int innovation)
 	assert(genome);
 	assert(innovation >= 0);
 
+}
+
+bool neat_genome_is_compatible(const struct neat_genome *genome,
+			       const struct neat_genome *other,
+			       float treshold)
+{
+	//TODO implement by checking the distance between the genomes
+
+	return true;
 }

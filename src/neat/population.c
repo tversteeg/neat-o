@@ -21,21 +21,25 @@ static void neat_replace_genome(struct neat_pop *p,
 {
 	assert(p);
 	assert(src);
+	assert(p->genomes[dest] != src);
 
 	neat_genome_destroy(p->genomes[dest]);
 	p->genomes[dest] = neat_genome_copy(src);
 }
 
-static void neat_create_new_species(struct neat_pop *p)
+static struct neat_species *neat_create_new_species(struct neat_pop *p,
+						    struct neat_genome *base)
 {
 	assert(p);
 
 	p->species = realloc(p->species,
-			     sizeof(struct neat_species*) * (p->nspecies + 1));
+			     sizeof(struct neat_species*) * ++p->nspecies);
 	assert(p->species);
 
-	p->species[p->nspecies] = neat_species_create(p->conf);
-	p->nspecies++;
+	struct neat_species *new = neat_species_create(p->conf, base);
+	p->species[p->nspecies - 1] = new;
+
+	return new;
 }
 
 static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
@@ -72,6 +76,30 @@ static float neat_get_species_fitness_average(struct neat_pop *p)
 	total_avg /= (double)p->nspecies;
 
 	return total_avg;
+}
+
+static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
+{
+	assert(p);
+
+	struct neat_genome *genome = p->genomes[genome_id];
+	float compatibility_treshold = p->conf.genome_compatibility_treshold;
+
+	/* Add genome to species if the representant matches the genome */
+	for(size_t i = 0; i < p->nspecies; i++){
+		struct neat_genome *species_representant =
+			neat_species_get_representant(p->species[i]);
+		if(neat_genome_is_compatible(genome,
+					     species_representant,
+					     compatibility_treshold)){
+			neat_species_add_genome(p->species[i], genome);
+			return;
+		}
+	}
+
+	/* If no matching species could be found create a new species */
+	struct neat_species *new = neat_create_new_species(p, NULL);
+	neat_species_add_genome(new, genome);
 }
 
 static void neat_select_reproduction_species(struct neat_pop *p,
@@ -111,6 +139,7 @@ static void neat_select_reproduction_species(struct neat_pop *p,
 			neat_replace_genome(p, worst_genome, g);
 		}
 
+		neat_speciate_genome(p, worst_genome);
 
 		break;
 	}
@@ -138,7 +167,7 @@ neat_t neat_create(struct neat_config config)
 	/* Create the starting species */
 	p->nspecies = 0;
 	p->species = NULL;
-	neat_create_new_species(p);
+	neat_create_new_species(p, p->genomes[0]);
 
 	return p;
 }

@@ -15,8 +15,9 @@ struct neat_config{
 	/* Species */
 	double species_crossover_probability;
 
-	/* Organisms */
+	/* Genomes */
 	size_t genome_minimum_ticks_alive;
+	float genome_compatibility_treshold;
 
 	/* Neural Networks */
 	size_t network_inputs, network_outputs;
