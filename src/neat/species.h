@@ -11,8 +11,7 @@ struct neat_species{
 	size_t ngenomes;
 };
 
-struct neat_species *neat_species_create(struct neat_config config,
-					 struct neat_genome *base_genome);
+struct neat_species *neat_species_create(struct neat_config config);
 void neat_species_destroy(struct neat_species *species);
 
 float neat_species_get_adjusted_fitness(struct neat_species *species,

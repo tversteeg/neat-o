@@ -45,6 +45,23 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	return new;
 }
 
+struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
+					  const struct neat_genome *parent2)
+{
+	assert(parent1);
+	assert(parent2);
+
+	//TODO implement random crossover
+	return neat_genome_copy(parent1);
+}
+
+void neat_genome_mutate(struct neat_genome *genome)
+{
+	assert(genome);
+
+	//TODO implement
+}
+
 void neat_genome_destroy(struct neat_genome *genome)
 {
 	assert(genome);
@@ -67,6 +84,7 @@ void neat_genome_add_random_node(struct neat_genome *genome, int innovation)
 	assert(genome);
 	assert(innovation >= 0);
 
+	//TODO implement
 }
 
 bool neat_genome_is_compatible(const struct neat_genome *genome,
@@ -77,3 +95,4 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 
 	return true;
 }
+

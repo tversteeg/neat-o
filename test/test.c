@@ -38,6 +38,8 @@ TEST neat_xor()
 		.population_size = 20,
 
 		.species_crossover_probability = 0.2,
+		.interspecies_crossover_probability = 0.05,
+		.mutate_species_crossover_probability = 0.25,
 
 		.genome_minimum_ticks_alive = 100,
 		.genome_compatibility_treshold = 0.2

@@ -2,8 +2,7 @@
 
 #include <assert.h>
 
-struct neat_species *neat_species_create(struct neat_config config,
-					 struct neat_genome *base_genome)
+struct neat_species *neat_species_create(struct neat_config config)
 {
 	assert(config.population_size > 0);
 
@@ -14,15 +13,6 @@ struct neat_species *neat_species_create(struct neat_config config,
 	species->genomes = calloc(config.population_size,
 				  sizeof(struct neat_genome*));
 	assert(species->genomes);
-
-	if(base_genome == NULL){
-		species->ngenomes = 0;
-	}else{
-		species->ngenomes = config.population_size;
-		for(size_t i = 0; i < species->ngenomes; i++){
-			species->genomes[i] = base_genome;
-		}
-	}
 
 	return species;
 }
@@ -102,11 +92,8 @@ void neat_species_remove_genome(struct neat_species *species,
 		/* Put the last genome on this position
 		 * (this will do nothing if it already is the last one)
 		 */
-
-		printf("%p\n", (void*)species->genomes[i]);
 		species->genomes[i] = species->genomes[--species->ngenomes];
 		species->genomes[species->ngenomes] = NULL;
-		printf("%p\n", (void*)species->genomes[i]);
 
 		return;
 	}

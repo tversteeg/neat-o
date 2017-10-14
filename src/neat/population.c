@@ -28,7 +28,7 @@ static void neat_replace_genome(struct neat_pop *p,
 }
 
 static struct neat_species *neat_create_new_species(struct neat_pop *p,
-						    struct neat_genome *base)
+						    bool fill)
 {
 	assert(p);
 
@@ -36,7 +36,14 @@ static struct neat_species *neat_create_new_species(struct neat_pop *p,
 			     sizeof(struct neat_species*) * ++p->nspecies);
 	assert(p->species);
 
-	struct neat_species *new = neat_species_create(p->conf, base);
+	struct neat_species *new = neat_species_create(p->conf);
+
+	if(fill){
+		for(size_t i = 0; i < p->ngenomes; i++){
+			neat_species_add_genome(new, p->genomes[i]);
+		}
+	}
+
 	p->species[p->nspecies - 1] = new;
 
 	return new;
@@ -98,12 +105,68 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 	}
 
 	/* If no matching species could be found create a new species */
-	struct neat_species *new = neat_create_new_species(p, NULL);
+	struct neat_species *new = neat_create_new_species(p, false);
 	neat_species_add_genome(new, genome);
 }
 
-static void neat_select_reproduction_species(struct neat_pop *p,
-					     size_t worst_genome)
+static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
+						       struct neat_species *s)
+{
+	assert(p);
+	assert(s);
+
+	float random = (float)rand() / (float)RAND_MAX;
+
+	/* Check for interspecies mutation which won't work with
+	 * only 1 species
+	 */
+	if(p->nspecies > 1 &&
+	   random < p->conf.interspecies_crossover_probability){
+		size_t species_index = rand() % p->nspecies;
+		struct neat_species *random_species = p->species[species_index];
+
+		/* We don't want to do interspecies crossover on the same
+		 * species
+		 */
+		if(random_species == s){
+			if(p->species[0] == random_species){
+				random_species++;
+			}else{
+				random_species--;
+			}
+		}
+
+		return neat_species_select_genitor(random_species);
+	}else{
+		return neat_species_select_genitor(s);
+	}
+}
+
+static void neat_crossover(struct neat_pop *p,
+			   struct neat_species *s,
+			   size_t worst_genome,
+			   struct neat_genome *parent)
+{
+	assert(p);
+	assert(s);
+	assert(parent);
+
+	struct neat_genome *parent2 = neat_crossover_get_parent2(p, s);
+	assert(parent2);
+
+	struct neat_genome *child = neat_genome_reproduce(parent, parent2);
+
+	float random = (float)rand() / (float)RAND_MAX;
+	if(random < p->conf.mutate_species_crossover_probability){
+		neat_genome_mutate(child);
+	}
+	
+	neat_replace_genome(p, worst_genome, child);
+	neat_genome_destroy(child);
+}
+
+static void neat_reproduce(struct neat_pop *p,
+			   size_t worst_genome)
 {
 	assert(p);
 
@@ -112,11 +175,7 @@ static void neat_select_reproduction_species(struct neat_pop *p,
 	float selection_random = (float)rand() / (float)RAND_MAX;
 	for(size_t i = 0; i < p->nspecies; i++){
 		struct neat_species *s = p->species[i];
-
-		/* Ignore empty species */
-		if(s->ngenomes == 0){
-			continue;
-		}
+		assert(s->ngenomes > 0);
 
 		float avg = neat_species_get_average_fitness(s);
 		float selection_prob = avg / total_avg;
@@ -129,14 +188,17 @@ static void neat_select_reproduction_species(struct neat_pop *p,
 			continue;
 		}
 
+		/* Select a random genome from the species, this will be the
+		 * replacement if there is no crossover and a parent when 
+		 * there is
+		 */
+		struct neat_genome *genitor = neat_species_select_genitor(s);
+
 		float random = (float)rand() / (float)RAND_MAX;
 		if(random < p->conf.species_crossover_probability){
-			/* Do a crossover */
-			//TODO: do crossover
+			neat_crossover(p, s, worst_genome, genitor);
 		}else{
-			/* Select a random genome from the species */
-			struct neat_genome *g = neat_species_select_genitor(s);
-			neat_replace_genome(p, worst_genome, g);
+			neat_replace_genome(p, worst_genome, genitor);
 		}
 
 		neat_speciate_genome(p, worst_genome);
@@ -167,7 +229,7 @@ neat_t neat_create(struct neat_config config)
 	/* Create the starting species */
 	p->nspecies = 0;
 	p->species = NULL;
-	neat_create_new_species(p, p->genomes[0]);
+	neat_create_new_species(p, true);
 
 	return p;
 }
@@ -216,7 +278,7 @@ void neat_epoch(neat_t population)
 					   p->genomes[worst_genome]);
 	}
 
-	neat_select_reproduction_species(p, worst_genome);
+	neat_reproduce(p, worst_genome);
 }
 
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness)

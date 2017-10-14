@@ -15,9 +15,13 @@ struct neat_genome{
 struct neat_genome *neat_genome_create(struct neat_config config,
 				       int innovation);
 struct neat_genome *neat_genome_copy(const struct neat_genome *genome);
+struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
+					  const struct neat_genome *parent2);
 void neat_genome_destroy(struct neat_genome *genome);
 
 const float *neat_genome_run(struct neat_genome *genome, const float *inputs);
+
+void neat_genome_mutate(struct neat_genome *genome);
 
 void neat_genome_add_random_node(struct neat_genome *genome, int innovation);
 

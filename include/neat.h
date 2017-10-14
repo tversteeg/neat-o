@@ -12,8 +12,10 @@ struct neat_config{
 	size_t population_size;
 	bool reset_on_extinction;
 
-	/* Species */
-	double species_crossover_probability;
+	/* Species Crossover */
+	float species_crossover_probability;
+	float interspecies_crossover_probability;
+	float mutate_species_crossover_probability;
 
 	/* Genomes */
 	size_t genome_minimum_ticks_alive;
