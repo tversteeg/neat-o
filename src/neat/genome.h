@@ -21,7 +21,7 @@ void neat_genome_destroy(struct neat_genome *genome);
 
 const float *neat_genome_run(struct neat_genome *genome, const float *inputs);
 
-void neat_genome_mutate(struct neat_genome *genome);
+void neat_genome_mutate(struct neat_genome *genome, struct neat_config config);
 
 void neat_genome_add_random_node(struct neat_genome *genome, int innovation);
 

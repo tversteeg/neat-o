@@ -158,7 +158,7 @@ static void neat_crossover(struct neat_pop *p,
 
 	float random = (float)rand() / (float)RAND_MAX;
 	if(random < p->conf.mutate_species_crossover_probability){
-		neat_genome_mutate(child);
+		neat_genome_mutate(child, p->conf);
 	}
 	
 	neat_replace_genome(p, worst_genome, child);

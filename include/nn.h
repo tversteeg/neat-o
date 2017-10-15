@@ -22,15 +22,15 @@ struct nn_ffnet{
 /* Create a new feedforward neural net, the activation functions for the hidden
  * and output layers are set by default to NN_ACTIVATION_SIGMOID and the bias
  * to -1.0
- * max_input_count: 		maximum amount of input nodes
- * max_hidden_count:		maximum amount of hidden nodes per layer
- * max_output_count:		maximum amount of output nodes
- * max_hidden_layer_count:	maximum amount of layers for the hidden nodes
+ * input_count: 	amount of input nodes
+ * hidden_count:	amount of hidden nodes per layer
+ * output_count:	amount of output nodes
+ * hidden_layer_count:	amount of layers for the hidden nodes
  */
-struct nn_ffnet *nn_ffnet_create(size_t max_input_count,
-				 size_t max_hidden_count,
-				 size_t max_output_count,
-				 size_t max_hidden_layer_count);
+struct nn_ffnet *nn_ffnet_create(size_t input_count,
+				 size_t hidden_count,
+				 size_t output_count,
+				 size_t hidden_layer_count);
 
 /* Copy the feedforward network into a newly allocated one */
 struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net);

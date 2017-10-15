@@ -18,6 +18,8 @@ TEST neat_create_and_destroy()
 	struct neat_config config = {
 		.network_inputs = 1,
 		.network_outputs = 1,
+		.network_hidden_nodes = 1,
+		.network_hidden_layers = 1,
 		.population_size = 1
 	};
 	neat_t neat = neat_create(config);
@@ -40,6 +42,9 @@ TEST neat_xor()
 		.species_crossover_probability = 0.2,
 		.interspecies_crossover_probability = 0.05,
 		.mutate_species_crossover_probability = 0.25,
+
+		.genome_add_neuron_mutation_probability = 0.5,
+		.genome_add_link_mutation_probability = 0.1,
 
 		.genome_minimum_ticks_alive = 100,
 		.genome_compatibility_treshold = 0.2
