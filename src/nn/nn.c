@@ -65,6 +65,64 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 	net->output = net->weight + net->nweights;
 }
 
+static size_t nn_ffnet_hidden_weights(size_t input_count,
+				      size_t hidden_count,
+				      size_t output_count,
+				      size_t hidden_layer_count)
+{
+	if(hidden_layer_count == 0){
+		return 0;
+	}
+
+	size_t input_weights = (input_count + 1) * hidden_count;
+	size_t hidden_internal_weights = (hidden_layer_count - 1) *
+		(hidden_count + 1) *
+		hidden_count;
+
+	return input_weights + hidden_internal_weights;
+}
+
+static size_t nn_ffnet_output_weights(size_t input_count,
+				      size_t hidden_count,
+				      size_t output_count,
+				      size_t hidden_layer_count)
+{
+	size_t output_weights;
+	if(hidden_layer_count > 0){
+		output_weights = hidden_count + 1;
+	}else{
+		output_weights = input_count + 1;
+	}
+	output_weights *= output_count;
+
+	return output_weights;
+}
+
+static size_t nn_ffnet_total_weights(size_t input_count,
+				     size_t hidden_count,
+				     size_t output_count,
+				     size_t hidden_layer_count)
+{
+	size_t hidden_weights = nn_ffnet_hidden_weights(input_count,
+							hidden_count,
+							output_count,
+							hidden_layer_count);
+
+	size_t output_weights = nn_ffnet_output_weights(input_count,
+							hidden_count,
+							output_count,
+							hidden_layer_count);
+
+	return hidden_weights + output_weights;
+}
+
+static size_t nn_ffnet_total_neurons(size_t input_count,
+				     size_t hidden_count,
+				     size_t output_count,
+				     size_t hidden_layer_count)
+{
+	return input_count + hidden_count * hidden_layer_count + output_count;
+}
 
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
 				 size_t hidden_count,
@@ -75,37 +133,20 @@ struct nn_ffnet *nn_ffnet_create(size_t input_count,
 	assert(output_count > 0);
 	assert((hidden_count > 0) == (hidden_layer_count > 0));
 
-	size_t hidden_weights = 0;
-	if(hidden_layer_count > 0){
-		size_t input_weights = (input_count + 1) * hidden_count;
-		size_t hidden_internal_weights = (hidden_layer_count - 1) *
-						 (hidden_count + 1) *
-						 hidden_count;
-		hidden_weights = input_weights + hidden_internal_weights;
-	}
+	size_t total_weights = nn_ffnet_total_weights(input_count,
+						      hidden_count,
+						      output_count,
+						      hidden_layer_count);
 
-	size_t output_weights;
-	if(hidden_layer_count > 0){
-		output_weights = hidden_count + 1;
-	}else{
-		output_weights = input_count + 1;
-	}
-	output_weights *= output_count;
-
-	size_t total_weights = hidden_weights + output_weights;
-	size_t total_neurons = input_count +
-			       hidden_count * hidden_layer_count +
-			       output_count;
-
-	size_t total_items = total_weights + total_neurons;
+	size_t total_neurons = nn_ffnet_total_neurons(input_count,
+						      hidden_count,
+						      output_count,
+						      hidden_layer_count);
 
 	/* Allocate the struct with extra bytes behind it for the data */
-	size_t items_bytes = sizeof(float) * total_items;
-	struct nn_ffnet *net = malloc(sizeof(struct nn_ffnet) + items_bytes);
+	size_t items_bytes = sizeof(float) * (total_weights + total_neurons);
+	struct nn_ffnet *net = calloc(items_bytes + sizeof(struct nn_ffnet), 1);
 	assert(net);
-
-	/* Set the extra data to 0 */
-	memset(net + 1, 0, items_bytes);
 
 	net->ninputs = input_count;
 	net->nhiddens = hidden_count;
@@ -149,6 +190,67 @@ void nn_ffnet_destroy(struct nn_ffnet *net)
 	assert(net);
 
 	free(net);
+}
+
+struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net)
+{
+	assert(net);
+	assert(net->nhiddens > 0);
+
+	size_t old_output_off = nn_ffnet_hidden_weights(net->ninputs,
+							net->nhiddens,
+							net->noutputs,
+							net->nhidden_layers);
+
+	size_t output_weights = nn_ffnet_output_weights(net->ninputs,
+							net->nhiddens,
+							net->noutputs,
+							net->nhidden_layers);
+
+	/* Resize the whole network */
+	net->nhidden_layers++;
+	size_t total_weights = nn_ffnet_total_weights(net->ninputs,
+						      net->nhiddens,
+						      net->noutputs,
+						      net->nhidden_layers);
+
+	size_t total_neurons = nn_ffnet_total_neurons(net->ninputs,
+						      net->nhiddens,
+						      net->noutputs,
+						      net->nhidden_layers);
+
+	size_t items_bytes = sizeof(float) * (total_weights + total_neurons);
+
+	net = realloc(net, sizeof(struct nn_ffnet) + items_bytes);
+	assert(net);
+
+	/* Move the pointers */
+	size_t old_nweights = net->nweights;
+	net->nweights = total_weights;
+	net->nneurons = total_neurons;
+
+	nn_ffnet_set_pointers(net);
+
+	/* Move the output weights */
+	size_t new_output_off = nn_ffnet_hidden_weights(net->ninputs,
+							net->nhiddens,
+							net->noutputs,
+							net->nhidden_layers);
+
+	size_t output_weight_bytes = sizeof(float) * output_weights;
+	memmove(net->weight + new_output_off,
+		net->weight + old_output_off,
+		output_weight_bytes); 
+
+	/* Set the new hidden weights to 0.0 */
+	size_t weights_bytes = sizeof(float) * (total_weights - old_nweights);
+	memset(net->weight + old_output_off, 0, weights_bytes);
+
+	/* Set all the neurons to 0.0 */
+	size_t output_bytes = sizeof(float) * total_neurons;
+	memset(net->output, 0, output_bytes);
+
+	return net;
 }
 
 void nn_ffnet_randomize(struct nn_ffnet *net)

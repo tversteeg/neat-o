@@ -2,6 +2,7 @@
 #include <neat.h>
 
 #include <float.h>
+#include <math.h>
 
 #include "greatest.h"
 
@@ -52,8 +53,6 @@ TEST neat_xor()
 	neat_t neat = neat_create(config);
 	ASSERT(neat);
 
-	float smallest_error = FLT_MAX;
-
 	/* Epochs */
 	for(int i = 0; i < 10000; i++){
 		/* Organisms */
@@ -66,17 +65,18 @@ TEST neat_xor()
 								xor_inputs[k]);
 				ASSERT(results);
 
-				error += abs(results[0] - xor_outputs[k]);
-			}
-
-			/* Keep track of the best error */
-			if(error < smallest_error){
-				smallest_error = error;
+				error += fabs(results[0] - xor_outputs[k]);
 			}
 
 			if(error < 0.1){
 				neat_destroy(neat);
-				PASS();
+
+				char message[512];
+				snprintf(message,
+					 512,
+					 "Found solution after %d iterations",
+					 i);
+				PASSm(message);
 			}
 
 			float fitness = 4.0 - error;
@@ -129,6 +129,53 @@ TEST nn_copy()
 	}
 
 	nn_ffnet_destroy(copy);
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_add_layer_single()
+{
+	float input = 1;
+
+	struct nn_ffnet *net = nn_ffnet_create(1, 1, 1, 1);
+	ASSERT(net);
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	/* Set the input -> hidden & hidden -> output layers to 1.0 */
+	nn_ffnet_set_bias(net, 0.0);
+	net->weight[1] = 1.0f;
+	net->weight[3] = 1.0f;
+
+	net = nn_ffnet_add_hidden_layer(net);
+
+	/* Set the hidden -> hidden layer to 2.0 */
+	net->weight[3] = 2.0f;
+
+	float *results = nn_ffnet_run(net, &input);
+	ASSERT(results);
+
+	ASSERT_EQ_FMT(2.0, results[0], "%.0f");
+
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_add_layer_multi()
+{
+	struct nn_ffnet *net = nn_ffnet_create(2, 2, 2, 1);
+	ASSERT(net);
+
+	nn_ffnet_randomize(net);
+
+	float last_value = net->output[-1];
+
+	net = nn_ffnet_add_hidden_layer(net);
+
+	ASSERT_EQ_FMT(last_value, net->output[-1], "%.0f");
+
 	nn_ffnet_destroy(net);
 	PASS();
 }
@@ -243,6 +290,8 @@ SUITE(nn)
 	RUN_TEST(nn_create_and_destroy);
 	RUN_TEST(nn_randomize);
 	RUN_TEST(nn_copy);
+	RUN_TEST(nn_add_layer_single);
+	RUN_TEST(nn_add_layer_multi);
 	RUN_TEST(nn_run);
 	RUN_TEST(nn_run_relu);
 	RUN_TEST(nn_run_xor);
@@ -275,50 +324,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
-#if 0
-
-#include <neat.h>
-
-static float xor_inputs[4][2] = {{0.0, 0.0},
-	{0.0, 1.0},
-	{1.0, 0.0},
-	{1.0, 1.0}};
-static float xor_outputs[4] = {0.0, 1.0, 1.0, 0.0};
-
-static float calculate_fitness(neat_ffnet_t net)
-{
-	float fitness = 4.0;
-	for(int i = 0; i < 4; i++){
-		neat_ffnet_predict(net, xor_inputs[i]);
-		float *outputs = neat_ffnet_get_outputs(net);
-		neat_ffnet_reset(net);
-
-		float diff = outputs[0] - xor_outputs[i];
-		fitness -= diff * diff;
-		free(outputs);
-	}
-
-	return fitness;
-}
-
-static void run()
-{
-	/* Initialize random numbers */
-	srand(time(NULL));
-
-	struct neat_config conf = {
-		.fitness_criterion = NEAT_FITNESS_CRITERION_MEAN,
-		.input_genome_topo = 2,
-		.output_genome_topo = 1,
-
-		.population_size = 100
-	};
-
-	neat_pop_t pop = neat_population_create(conf);
-
-	neat_run(pop, calculate_fitness, 100);
-
-	neat_population_destroy(pop);
-}
-#endif

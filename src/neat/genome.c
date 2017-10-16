@@ -8,29 +8,11 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome)
 	assert(genome);
 	assert(genome->net);
 
-	//TODO replace this with a copying of the values function
-	if(genome->innovations){
-		free(genome->innovations);
-	}
-
 	size_t bytes = sizeof(int) * genome->net->nweights;
-	genome->innovations = malloc(bytes);
+	genome->innovations = realloc(genome->innovations, bytes);
 	assert(genome->innovations);
 
 	return bytes;
-}
-
-static struct nn_ffnet *neat_nn_add_layer(const struct nn_ffnet *net)
-{
-	struct nn_ffnet *new = nn_ffnet_create(net->ninputs,
-					       net->nhiddens,
-					       net->noutputs,
-					       net->nhidden_layers + 1);
-	assert(new);
-	
-	//TODO copy internal data
-
-	return new;
 }
 
 static void neat_genome_add_neuron(struct neat_genome *genome)
@@ -41,9 +23,7 @@ static void neat_genome_add_neuron(struct neat_genome *genome)
 	/* Add + 1 to the selection of the layer so a new one can be created */
 	size_t layer = rand() % (genome->net->nhidden_layers + 1);
 	if(layer >= genome->net->nhidden_layers){
-		struct nn_ffnet *new = neat_nn_add_layer(genome->net);
-		nn_ffnet_destroy(genome->net);
-		genome->net = new;
+		genome->net = nn_ffnet_add_hidden_layer(genome->net);
 
 		neat_genome_allocate_innovations(genome);
 	}
