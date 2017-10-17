@@ -39,3 +39,5 @@ void neat_epoch(neat_t population);
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness);
 
 void neat_increase_time_alive(neat_t population, size_t genome_id);
+
+void neat_print_net(neat_t population, size_t genome_id);

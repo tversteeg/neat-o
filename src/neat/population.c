@@ -158,7 +158,7 @@ static void neat_crossover(struct neat_pop *p,
 
 	float random = (float)rand() / (float)RAND_MAX;
 	if(random < p->conf.mutate_species_crossover_probability){
-		neat_genome_mutate(child, p->conf);
+		neat_genome_mutate(child, p->conf, p->innovation);
 	}
 	
 	neat_replace_genome(p, worst_genome, child);
@@ -267,6 +267,8 @@ void neat_epoch(neat_t population)
 	struct neat_pop *p = population;
 	assert(p);
 
+	p->innovation++;
+
 	size_t worst_genome = 0;
 	if(!neat_find_worst_fitness(p, &worst_genome)){
 		return;
@@ -297,4 +299,13 @@ void neat_increase_time_alive(neat_t population, size_t genome_id)
 	assert(genome_id < p->ngenomes);
 
 	p->genomes[genome_id]->time_alive++;
+}
+
+void neat_print_net(neat_t population, size_t genome_id)
+{
+	struct neat_pop *p = population;
+	assert(p);
+	assert(genome_id < p->ngenomes);
+
+	neat_genome_print_net(p->genomes[genome_id]);
 }

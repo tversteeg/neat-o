@@ -35,8 +35,8 @@ TEST neat_xor()
 	struct neat_config config = {
 		.network_inputs = 2,
 		.network_outputs = 1,
-		.network_hidden_nodes = 8,
-		.network_hidden_layers = 4,
+		.network_hidden_nodes = 16,
+		.network_hidden_layers = 1,
 
 		.population_size = 20,
 
@@ -88,6 +88,11 @@ TEST neat_xor()
 		neat_epoch(neat);
 	}
 
+	/* Organisms */
+	for(int j = 0; j < config.population_size; j++){
+		neat_print_net(neat, j);
+	}
+
 	neat_destroy(neat);
 	FAILm("A mutation that solved the xor problem did not occur");
 }
@@ -114,9 +119,9 @@ TEST nn_randomize()
 	PASS();
 }
 
-TEST nn_copy()
+TEST nn_copy_weights()
 {
-	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
+	struct nn_ffnet *net = nn_ffnet_create(10, 10, 10, 10);
 	ASSERT(net);
 
 	nn_ffnet_randomize(net);
@@ -124,8 +129,40 @@ TEST nn_copy()
 	struct nn_ffnet *copy = nn_ffnet_copy(net);
 	ASSERT(copy);
 
+	/* Make sure the copies without changes are the same */
 	for(int i = 0; i < net->nweights; i++){
 		ASSERT_EQ_FMT(net->weight[i], copy->weight[i], "%g");
+	}
+
+	/* Make sure the copies with changes are not the same */
+	nn_ffnet_randomize(net);
+	for(int i = 0; i < net->nweights; i++){
+		ASSERT_FALSE(net->weight[i] == copy->weight[i]);
+	}
+
+	nn_ffnet_destroy(copy);
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_copy_neurons()
+{
+	float input[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+	struct nn_ffnet *net = nn_ffnet_create(10, 3, 10, 2);
+	ASSERT(net);
+
+	nn_ffnet_randomize(net);
+
+	float *results = nn_ffnet_run(net, input);
+
+	struct nn_ffnet *copy = nn_ffnet_copy(net);
+	ASSERT(copy);
+
+	/* Make sure the copies without changes are the same */
+	float *results_copy = nn_ffnet_run(copy, input);
+	for(int i = 0; i < 10; i++){
+		ASSERT_EQ_FMT(results[i], results_copy[i], "%g");
 	}
 
 	nn_ffnet_destroy(copy);
@@ -147,12 +184,9 @@ TEST nn_add_layer_single()
 	/* Set the input -> hidden & hidden -> output layers to 1.0 */
 	nn_ffnet_set_bias(net, 0.0);
 	net->weight[1] = 1.0f;
-	net->weight[3] = 1.0f;
-
-	net = nn_ffnet_add_hidden_layer(net);
-
-	/* Set the hidden -> hidden layer to 2.0 */
 	net->weight[3] = 2.0f;
+
+	net = nn_ffnet_add_hidden_layer(net, 1.0f);
 
 	float *results = nn_ffnet_run(net, &input);
 	ASSERT(results);
@@ -165,14 +199,14 @@ TEST nn_add_layer_single()
 
 TEST nn_add_layer_multi()
 {
-	struct nn_ffnet *net = nn_ffnet_create(2, 2, 2, 1);
+	struct nn_ffnet *net = nn_ffnet_create(2, 2, 2, 2);
 	ASSERT(net);
 
 	nn_ffnet_randomize(net);
 
 	float last_value = net->output[-1];
 
-	net = nn_ffnet_add_hidden_layer(net);
+	net = nn_ffnet_add_hidden_layer(net, 2.0f);
 
 	ASSERT_EQ_FMT(last_value, net->output[-1], "%.0f");
 
@@ -289,7 +323,8 @@ SUITE(nn)
 {
 	RUN_TEST(nn_create_and_destroy);
 	RUN_TEST(nn_randomize);
-	RUN_TEST(nn_copy);
+	RUN_TEST(nn_copy_weights);
+	RUN_TEST(nn_copy_neurons);
 	RUN_TEST(nn_add_layer_single);
 	RUN_TEST(nn_add_layer_multi);
 	RUN_TEST(nn_run);

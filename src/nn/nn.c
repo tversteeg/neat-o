@@ -192,7 +192,7 @@ void nn_ffnet_destroy(struct nn_ffnet *net)
 	free(net);
 }
 
-struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net)
+struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 {
 	assert(net);
 	assert(net->nhiddens > 0);
@@ -242,9 +242,30 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net)
 		net->weight + old_output_off,
 		output_weight_bytes); 
 
-	/* Set the new hidden weights to 0.0 */
-	size_t weights_bytes = sizeof(float) * (total_weights - old_nweights);
-	memset(net->weight + old_output_off, 0, weights_bytes);
+	/* Set most of the new hidden weights to 0.0 */
+	size_t weights_diff =  total_weights - old_nweights;
+	memset(net->weight + old_output_off, 0, sizeof(float) * weights_diff);
+
+	/* Set the hidden weights that already had a connection to 1.0 */
+	size_t weight_off_end = old_output_off + weights_diff;
+	size_t weights_per_layer = net->nhiddens * (net->nhiddens + 1);
+	for(size_t i = old_output_off; i < weight_off_end; i += net->nhiddens){
+		/* Check if there are any connections in the previous layer */
+		int has_connection = 0;
+
+		size_t prev_conn_start = i - weights_per_layer;
+		/* + 1 because we don't care about the bias */
+		for(size_t j = prev_conn_start + 1;
+		    j < prev_conn_start + net->nhiddens + 1;
+		    j++){
+			has_connection += net->weight[j] != 0.0;
+		}
+
+		if(has_connection){
+			/* + 1 because we don't care about the bias */
+			net->weight[i + 1] = weight;
+		}
+	}
 
 	/* Set all the neurons to 0.0 */
 	size_t output_bytes = sizeof(float) * total_neurons;

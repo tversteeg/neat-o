@@ -39,11 +39,15 @@ struct nn_ffnet *nn_ffnet_copy(struct nn_ffnet *net);
 void nn_ffnet_destroy(struct nn_ffnet *net);
 
 /* Add a new hidden layer, this reallocates the memory 
- * returns a new pointer because an internal realloc is used, you should
+ * weight	the value of a single weight between the newly created hidden
+ * 		layer and the previous layer, only one weight between them is
+ * 		assigned
+ *
+ * return a new pointer because an internal realloc is used, you should
  * overwrite the pointer you were using with this, example:
  * net = nn_ffnet_add_hidden_layer(net);
  */
-struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net);
+struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight);
 
 /* Set the activation functions
  * hidden:	for the hidden layers
