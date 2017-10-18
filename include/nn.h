@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 enum nn_activation{
+	NN_ACTIVATION_PASSTHROUGH = 0,
 	NN_ACTIVATION_SIGMOID,
 	NN_ACTIVATION_FAST_SIGMOID,
 	NN_ACTIVATION_RELU
@@ -19,13 +20,13 @@ struct nn_ffnet{
 	enum nn_activation hidden_activation, output_activation;
 };
 
-/* Create a new feedforward neural net, the activation functions for the hidden
- * and output layers are set by default to NN_ACTIVATION_SIGMOID and the bias
- * to -1.0
+/* Create a new feedforward neural net, the bias is set to -1.0 by default
  * input_count: 	amount of input nodes
  * hidden_count:	amount of hidden nodes per layer
  * output_count:	amount of output nodes
  * hidden_layer_count:	amount of layers for the hidden nodes
+ *
+ * return an allocated struct, call nn_ffnet_destroy to free it
  */
 struct nn_ffnet *nn_ffnet_create(size_t input_count,
 				 size_t hidden_count,
@@ -61,6 +62,8 @@ void nn_ffnet_set_activations(struct nn_ffnet *net,
  * bias:	value to multiple the weight going to the bias nodes with
  */
 void nn_ffnet_set_bias(struct nn_ffnet *net, float bias);
+
+void nn_ffnet_set_weights(struct nn_ffnet *net, float weight);
 
 /* Give all the weights in the feedforward network a value between -1 & 1 */
 void nn_ffnet_randomize(struct nn_ffnet *net);

@@ -90,7 +90,7 @@ TEST neat_xor()
 
 	/* Organisms */
 	for(int j = 0; j < config.population_size; j++){
-		neat_print_net(neat, j);
+		//neat_print_net(neat, j);
 	}
 
 	neat_destroy(neat);
@@ -170,6 +170,49 @@ TEST nn_copy_neurons()
 	PASS();
 }
 
+TEST nn_add_layer_zero()
+{
+	float inputs[] = {1.0f, 10.25f, 0.01f};
+
+	struct nn_ffnet *net = nn_ffnet_create(3, 3, 3, 0);
+	ASSERT(net);
+
+	net->weight[1] = 1.0f;
+	net->weight[6] = 1.0f;
+	net->weight[11] = 1.0f;
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	nn_ffnet_set_bias(net, 0.0f);
+
+	net = nn_ffnet_add_hidden_layer(net, 1.0f);
+
+#if 0
+	puts("\n");
+	for(size_t i = 0; i < net->nweights; i++){
+		if(i % 4 == 0){
+			puts("\n");
+		}
+		printf("%X:%f ",
+		       (unsigned)(unsigned long long)(net->weight + i),
+		       net->weight[i]);
+	}
+	puts("\n");
+#endif
+
+	float *results = nn_ffnet_run(net, inputs);
+	ASSERT(results);
+
+	for(size_t i = 0; i < 3; i++){
+		ASSERT_IN_RANGE(inputs[i], results[i], 0.01f);
+	}
+
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
 TEST nn_add_layer_single()
 {
 	float input = 1;
@@ -191,7 +234,7 @@ TEST nn_add_layer_single()
 	float *results = nn_ffnet_run(net, &input);
 	ASSERT(results);
 
-	ASSERT_EQ_FMT(2.0, results[0], "%.0f");
+	ASSERT_EQ_FMT(2.0, results[0], "%g");
 
 	nn_ffnet_destroy(net);
 	PASS();
@@ -204,13 +247,22 @@ TEST nn_add_layer_multi()
 
 	nn_ffnet_randomize(net);
 
-	float last_value = net->output[-1];
+	struct nn_ffnet *copy = nn_ffnet_copy(net);
 
 	net = nn_ffnet_add_hidden_layer(net, 2.0f);
 
-	ASSERT_EQ_FMT(last_value, net->output[-1], "%.0f");
+	/* Compare the inputs and the first hidden layers */
+	for(size_t i = 0; i < 6; i++){
+		ASSERT_EQ_FMT(copy->weight[i], net->weight[i], "%g");
+	}
+
+	/* Compare the outputs */
+	for(size_t i = -1; i >= -2; i--){
+		ASSERT_EQ_FMT(copy->output[i], net->output[i], "%g");
+	}
 
 	nn_ffnet_destroy(net);
+	nn_ffnet_destroy(copy);
 	PASS();
 }
 
@@ -218,7 +270,7 @@ TEST nn_run()
 {
 	float input = 1;
 
-	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
+	struct nn_ffnet *net = nn_ffnet_create(1, 1, 1, 0);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,
@@ -244,7 +296,7 @@ TEST nn_run()
 
 TEST nn_run_relu()
 {
-	struct nn_ffnet *net = nn_ffnet_create(1, 0, 1, 0);
+	struct nn_ffnet *net = nn_ffnet_create(1, 1, 1, 0);
 	ASSERT(net);
 
 	nn_ffnet_set_activations(net,
@@ -325,6 +377,7 @@ SUITE(nn)
 	RUN_TEST(nn_randomize);
 	RUN_TEST(nn_copy_weights);
 	RUN_TEST(nn_copy_neurons);
+	RUN_TEST(nn_add_layer_zero);
 	RUN_TEST(nn_add_layer_single);
 	RUN_TEST(nn_add_layer_multi);
 	RUN_TEST(nn_run);
