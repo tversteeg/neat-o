@@ -392,3 +392,46 @@ float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs)
 
 	return ret;
 }
+
+bool nn_ffnet_neuron_is_connected(struct nn_ffnet *net, size_t neuron_id)
+{
+	assert(net);
+	assert(neuron_id < net->nneurons);
+
+	/* The input layer is always connected */
+	if(neuron_id < net->ninputs){
+		return true;
+	}
+
+	/* Subtract the inputs of the id because the input neurons don't
+	 * count as weights
+	 */
+	neuron_id -= net->ninputs;
+	/* Check the first hidden layer connected to the inputs */
+	if(neuron_id < net->nhiddens){
+		/* + 1 for ignoring the bias */
+		size_t start_index = neuron_id * (net->ninputs + 1) + 1;
+		float *weight = net->weight + start_index;
+		int is_connected = 0;
+		for(size_t i = 0; i < net->ninputs; i++){
+			is_connected += *weight++ != 0.0f;
+		}
+
+		return is_connected != 0;
+	}
+
+	/* Subtract the first layer because we already passed that */
+	neuron_id -= net->nhiddens;
+
+	/* Start at the first hidden layer */
+	size_t start_index = (net->ninputs + 1) * net->nhiddens;
+	/* + 1 for ignoring the bias */
+	start_index += neuron_id * (net->nhiddens + 1) + 1;
+	float *weight = net->weight + start_index;
+	int is_connected = 0;
+	for(size_t i = 0; i < net->nhiddens; i++){
+		is_connected += *weight++ != 0.0f;
+	}
+
+	return is_connected != 0;
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 enum nn_activation{
 	NN_ACTIVATION_PASSTHROUGH = 0,
@@ -76,3 +77,5 @@ void nn_ffnet_randomize(struct nn_ffnet *net);
  * output_count as supplied to the nn_ffnet_create function
  */
 float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs);
+
+bool nn_ffnet_neuron_is_connected(struct nn_ffnet *net, size_t neuron_id);

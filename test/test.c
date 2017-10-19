@@ -124,7 +124,7 @@ TEST nn_copy_weights()
 	struct nn_ffnet *net = nn_ffnet_create(10, 10, 10, 10);
 	ASSERT(net);
 
-	nn_ffnet_randomize(net);
+	nn_ffnet_set_weights(net, 1.0f);
 
 	struct nn_ffnet *copy = nn_ffnet_copy(net);
 	ASSERT(copy);
@@ -135,7 +135,7 @@ TEST nn_copy_weights()
 	}
 
 	/* Make sure the copies with changes are not the same */
-	nn_ffnet_randomize(net);
+	nn_ffnet_set_weights(net, 0.0f);
 	for(int i = 0; i < net->nweights; i++){
 		ASSERT_FALSE(net->weight[i] == copy->weight[i]);
 	}
@@ -166,6 +166,66 @@ TEST nn_copy_neurons()
 	}
 
 	nn_ffnet_destroy(copy);
+	nn_ffnet_destroy(net);
+	PASS();
+}
+
+TEST nn_neuron_is_connected()
+{
+	struct nn_ffnet *net = nn_ffnet_create(4, 2, 1, 2);
+	ASSERT(net);
+
+	/* Inputs must always be true */
+	for(size_t i = 0; i < 4; i++){
+		ASSERT(nn_ffnet_neuron_is_connected(net, i));
+	}
+
+	/* The rest must be false because we didn't set any weights */
+	for(size_t i = 4; i < net->nneurons; i++){
+		ASSERT_FALSE(nn_ffnet_neuron_is_connected(net, i));
+	}
+
+	/* We set one weight in the first layer so the first hidden layer
+	 * must be true
+	 */
+	for(size_t i = 0; i < 4; i++){
+		net->weight[5 * 0 + i + 1] = 1.0f;
+		ASSERT(nn_ffnet_neuron_is_connected(net, 4));
+
+		/* Reset */
+		nn_ffnet_set_weights(net, 0.0f);
+
+		net->weight[5 * 1 + i + 1] = 1.0f;
+		ASSERT(nn_ffnet_neuron_is_connected(net, 5));
+
+		/* Reset */
+		nn_ffnet_set_weights(net, 0.0f);
+	}
+
+	/* Do the same for the next hidden layer */
+	for(size_t i = 0; i < 2; i++){
+		net->weight[5 * 2 + 3 * 0 + i + 1] = 1.0f;
+		ASSERT(nn_ffnet_neuron_is_connected(net, 6));
+
+		/* Reset */
+		nn_ffnet_set_weights(net, 0.0f);
+
+		net->weight[5 * 2 + 3 * 1 + i + 1] = 1.0f;
+		ASSERT(nn_ffnet_neuron_is_connected(net, 7));
+
+		/* Reset */
+		nn_ffnet_set_weights(net, 0.0f);
+	}
+
+	/* Do the same for the output node */
+	for(size_t i = 0; i < 2; i++){
+		net->weight[5 * 2 + 3 * 2 + i + 1] = 1.0f;
+		ASSERT(nn_ffnet_neuron_is_connected(net, 8));
+
+		/* Reset */
+		nn_ffnet_set_weights(net, 0.0f);
+	}
+
 	nn_ffnet_destroy(net);
 	PASS();
 }
@@ -373,16 +433,19 @@ TEST nn_time_big()
 
 SUITE(nn)
 {
-	RUN_TEST(nn_create_and_destroy);
-	RUN_TEST(nn_randomize);
-	RUN_TEST(nn_copy_weights);
-	RUN_TEST(nn_copy_neurons);
-	RUN_TEST(nn_add_layer_zero);
-	RUN_TEST(nn_add_layer_single);
-	RUN_TEST(nn_add_layer_multi);
-	RUN_TEST(nn_run);
-	RUN_TEST(nn_run_relu);
-	RUN_TEST(nn_run_xor);
+	for(size_t i = 0; i < 10; i++){
+		RUN_TEST(nn_create_and_destroy);
+		RUN_TEST(nn_randomize);
+		RUN_TEST(nn_copy_weights);
+		RUN_TEST(nn_copy_neurons);
+		RUN_TEST(nn_neuron_is_connected);
+		RUN_TEST(nn_add_layer_zero);
+		RUN_TEST(nn_add_layer_single);
+		RUN_TEST(nn_add_layer_multi);
+		RUN_TEST(nn_run);
+		RUN_TEST(nn_run_relu);
+		RUN_TEST(nn_run_xor);
+	}
 }
 
 SUITE(nn_time)
