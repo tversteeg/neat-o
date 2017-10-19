@@ -249,19 +249,6 @@ TEST nn_add_layer_zero()
 
 	net = nn_ffnet_add_hidden_layer(net, 1.0f);
 
-#if 0
-	puts("\n");
-	for(size_t i = 0; i < net->nweights; i++){
-		if(i % 4 == 0){
-			puts("\n");
-		}
-		printf("%X:%f ",
-		       (unsigned)(unsigned long long)(net->weight + i),
-		       net->weight[i]);
-	}
-	puts("\n");
-#endif
-
 	float *results = nn_ffnet_run(net, inputs);
 	ASSERT(results);
 
