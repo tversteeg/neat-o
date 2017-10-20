@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <assert.h>
 
+static inline float neat_random_two()
+{
+	return (float)rand() / (float)(RAND_MAX / 4.0f) - 2.0f;
+}
+
 static void neat_genome_zeroify_innovations(struct neat_genome *genome)
 {
 	assert(genome);
@@ -40,19 +45,6 @@ static void neat_genome_add_layer(struct neat_genome *genome)
 	neat_genome_zeroify_innovations(genome);
 }
 
-static void neat_genome_add_neuron(struct neat_genome *genome, int innovation)
-{
-	assert(genome);
-	assert(genome->net);
-
-	/* Add + 1 to the selection of the layer so a new one can be created */
-	size_t layer = rand() % (genome->net->nhidden_layers + 1);
-	if(layer >= genome->net->nhidden_layers){
-		neat_genome_add_layer(genome);
-		return;
-	}
-}
-
 static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 {
 	assert(genome);
@@ -63,23 +55,47 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 	size_t select_weight_offset = rand() % available_weights;
 
 	/* Loop over the available weight to find the randomly selected one */
-	size_t selected_index = SIZE_MAX;
 	for(size_t i = 0; i < genome->net->nweights; i++){
 		if(genome->net->weight[i] == 0.0f && !select_weight_offset--){
-			selected_index = i;
-			break;
+			genome->net->weight[i] = neat_random_two();
+			genome->innovations[i] = innovation;
+			genome->used_weights++;
+			return;
 		}
 	}
+}
 
-	/* Netwerk is full, return */
-	if(selected_index == SIZE_MAX){
+static void neat_genome_add_neuron(struct neat_genome *genome, int innovation)
+{
+	assert(genome);
+	assert(genome->net);
+
+	struct nn_ffnet *n = genome->net;
+
+	/* Add + 1 to the selection of the layer so a new one can be created */
+	size_t layer = rand() % (n->nhidden_layers) + 1;
+	if(layer >= n->nhidden_layers){
+		neat_genome_add_layer(genome);
 		return;
 	}
 
-	float weight_val = (float)rand() / (float)(RAND_MAX / 4.0f) - 2.0f;
-	genome->net->weight[selected_index] = weight_val;
-	genome->innovations[selected_index] = innovation;
-	genome->used_weights++;
+	/* Find the first disconnected layer starting from the selected layer
+	 * and set the weight value to a random previous node
+	 */
+	for(size_t i = n->ninputs + layer * n->nhiddens; i < n->nneurons; i++){
+		if(!nn_ffnet_neuron_is_connected(n, i)){
+			size_t start = nn_ffnet_get_weight_to_neuron(n, i);
+			size_t index = start + (rand() % n->nhiddens);
+
+			n->weight[index] = neat_random_two();
+			genome->innovations[index] = innovation;
+			genome->used_weights++;
+			return;
+		}
+	}
+
+	/* No available nodes found, just add a new link */
+	neat_genome_add_link(genome, innovation);
 }
 
 struct neat_genome *neat_genome_create(struct neat_config config,
@@ -132,8 +148,23 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 	assert(parent1);
 	assert(parent2);
 
-	//TODO implement random crossover
-	return neat_genome_copy(parent1);
+	struct neat_genome *child = neat_genome_copy(parent1);
+
+	//TODO fix enabling
+	for(size_t i = 0; i < child->net->nweights; i++){
+		int in1 = parent1->innovations[i];
+		int in2 = parent2->innovations[i];
+		if(in1 == in2){
+			continue;
+		}
+		if(in1 == 0 && in2 != 0){
+			child->net->weight[i] = parent2->net->weight[i];
+			child->innovations[i] = parent2->innovations[i];
+			child->used_weights++;
+		}
+	}
+
+	return child;
 }
 
 void neat_genome_mutate(struct neat_genome *genome,
@@ -207,7 +238,13 @@ void neat_genome_print_net(const struct neat_genome *genome)
 	for(size_t i = 1; i < n->nhidden_layers; i++){
 		printf("\n%d Hiddens -> Hiddens: ", (int)i);
 		for(size_t j = 0; j < hidden_weights; j++){
-			printf("%g ", *weight++);
+			if((int)(*weight * 10.0) != 0.0){
+				printf("%d:%.1f ",
+				       (int)(j / n->nhiddens),
+				       *weight);
+			}
+			
+			weight++;
 		}
 	}
 

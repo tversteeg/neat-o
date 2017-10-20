@@ -20,7 +20,6 @@ TEST neat_create_and_destroy()
 		.network_inputs = 1,
 		.network_outputs = 1,
 		.network_hidden_nodes = 1,
-		.network_hidden_layers = 1,
 		.population_size = 1
 	};
 	neat_t neat = neat_create(config);
@@ -36,7 +35,6 @@ TEST neat_xor()
 		.network_inputs = 2,
 		.network_outputs = 1,
 		.network_hidden_nodes = 16,
-		.network_hidden_layers = 1,
 
 		.population_size = 20,
 
@@ -90,7 +88,7 @@ TEST neat_xor()
 
 	/* Organisms */
 	for(int j = 0; j < config.population_size; j++){
-		//neat_print_net(neat, j);
+		neat_print_net(neat, j);
 	}
 
 	neat_destroy(neat);

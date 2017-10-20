@@ -26,7 +26,7 @@ struct neat_config{
 
 	/* Neural Networks */
 	size_t network_inputs, network_outputs;
-	size_t network_hidden_nodes, network_hidden_layers;
+	size_t network_hidden_nodes;
 };
 
 neat_t neat_create(struct neat_config config);

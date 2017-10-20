@@ -79,3 +79,5 @@ void nn_ffnet_randomize(struct nn_ffnet *net);
 float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs);
 
 bool nn_ffnet_neuron_is_connected(struct nn_ffnet *net, size_t neuron_id);
+
+size_t nn_ffnet_get_weight_to_neuron(struct nn_ffnet *net, size_t neuron_id);
