@@ -301,6 +301,15 @@ void neat_increase_time_alive(neat_t population, size_t genome_id)
 	p->genomes[genome_id]->time_alive++;
 }
 
+const struct nn_ffnet *neat_get_network(neat_t population, size_t genome_id)
+{
+	struct neat_pop *p = population;
+	assert(p);
+	assert(genome_id < p->ngenomes);
+
+	return p->genomes[genome_id]->net;
+}
+
 void neat_print_net(neat_t population, size_t genome_id)
 {
 	struct neat_pop *p = population;
