@@ -7,6 +7,7 @@
 
 static cairo_surface_t *surface = NULL;
 static neat_t neat = NULL;
+static size_t frame = 0;
 
 static float xor_inputs[4][2] = {
 	{0.0f, 0.0f},
@@ -49,14 +50,40 @@ static void draw_neuron_circle(cairo_t *cr,
 {
 	cairo_save(cr);
 	if(is_bias){
-		cairo_arc(cr, x, y, radius / 2.0, 0, 2 * G_PI);
-	}else{
-		cairo_arc(cr, x, y, radius, 0, 2 * G_PI);
+		radius /= 1.5;
 	}
-	cairo_set_source_rgb(cr, 1.0, (value + 1.0) / 2.0, 1.0);
+	cairo_arc(cr, x, y, radius, 0, 2 * G_PI);
+	if(value < 0.0){
+		float converted_value = 1.0 + value / 2.0;
+		cairo_set_source_rgb(cr, 1.0, converted_value, converted_value);
+	}else{
+		cairo_set_source_rgb(cr, 1.0, value / 2.0, 1.0);
+	}
 	cairo_fill_preserve(cr);
 	cairo_restore(cr);
 	cairo_stroke(cr);
+}
+
+static void draw_weight_line(cairo_t *cr,
+			     guint startx,
+			     guint starty,
+			     guint endx,
+			     guint endy,
+			     float value)
+{
+	cairo_save(cr);
+	if(value < 0.0){
+		value = 0.5 + value / 4.0;
+		cairo_set_source_rgb(cr, 1.0, value, value);
+	}else{
+		value = value / 4.0;
+		cairo_set_source_rgb(cr, value, value, value);
+	}
+	cairo_move_to (cr, startx, starty);
+	cairo_line_to (cr, endx, endy);
+	cairo_set_line_width(cr, 1.0 + value);
+	cairo_stroke(cr);
+	cairo_restore(cr);
 }
 
 static void draw_neat_network(cairo_t *cr,
@@ -67,64 +94,100 @@ static void draw_neat_network(cairo_t *cr,
 			      guint width,
 			      guint height)
 {
-	int radius = width / 20, xoffset = width / 10, yoffset = height / 20;
+	int radius = MIN(width, height) / 20;
+	int xoffset = width / 10, yoffset = height / 20;
 
 	const struct nn_ffnet *n = neat_get_network(neat, network);
 
 	float *neuron = n->output;
+	float *weight = n->weight;
 
-	x += radius + yoffset;
+	x += radius + xoffset;
 	y += radius + yoffset;
+	guint xinc = radius * 2 + xoffset;
+	guint yinc = radius * 2 + yoffset;
 	guint starty = y;
 
+	for(size_t j = 0; j < n->nhiddens; j++){
+		draw_weight_line(cr,
+				 x,
+				 y,
+				 x + xinc,
+				 y + yinc * (j + 1),
+				 *weight++); 
+	}
 	draw_neuron_circle(cr, x, y, radius, n->bias, true);
-	y += radius * 2 + yoffset;
+	y += yinc;
 	for(size_t i = 0; i < n->ninputs; i++){
+		for(size_t j = 0; j < n->nhiddens; j++){
+			draw_weight_line(cr,
+					 x,
+					 y,
+					 x + xinc,
+					 y + yinc * (j - i),
+					 *weight++); 
+		}
 		draw_neuron_circle(cr, x, y, radius, *neuron++, false);
-		y += radius * 2 + yoffset;
+		y += yinc;
 	}
 
-	x += radius * 2 + xoffset;
+	x += xinc;
 	y = starty;
 
 	for(size_t i = 0; i < n->nhidden_layers; i++){
-		draw_neuron_circle(cr, x, y, radius, n->bias, true);
-		y += radius * 2 + yoffset;
-		for(size_t j = 0; j < n->nhiddens; j++){
-			draw_neuron_circle(cr, x, y, radius, *neuron++, false);
-			y += radius * 2 + yoffset;
+		size_t next = n->nhiddens;
+		if(i == n->nhidden_layers - 1){
+			next = n->noutputs;
 		}
-		x += radius * 2 + xoffset;
+		for(size_t j = 0; j < next; j++){
+			draw_weight_line(cr,
+					 x,
+					 y,
+					 x + xinc,
+					 y + yinc * (j + 1),
+					 *weight++); 
+		}
+		draw_neuron_circle(cr, x, y, radius, n->bias, true);
+		y += yinc;
+		for(size_t j = 0; j < n->nhiddens; j++){
+			for(size_t k = 0; k < next; k++){
+				draw_weight_line(cr,
+						 x,
+						 y,
+						 x + xinc,
+						 y + yinc * (k - j),
+						 *weight++); 
+			}
+			draw_neuron_circle(cr, x, y, radius, *neuron++, false);
+			y += yinc;
+		}
+		x += xinc;
 		y = starty;
 	}
 
 	for(size_t i = 0; i < n->noutputs; i++){
-		y += radius * 2 + yoffset;
+		y += yinc;
 		draw_neuron_circle(cr, x, y, radius, *neuron++, false);
 	}
 }
 
 static gboolean tick(gpointer data)
 {
+	size_t xor_index = rand() % 4;
 	for(int i = 0; i < config.population_size; i++){
-		float error = 0.0f;
-		for(int j = 0; j < 4; j++){
-			const float *results = neat_run(neat, i, xor_inputs[j]);
+		const float *results = neat_run(neat, i, xor_inputs[xor_index]);
 
-			error += fabs(results[0] - xor_outputs[j]);
-		}
+		float error = fabs(results[0] - xor_outputs[xor_index]);
 
-		if(error < 0.1){
-			return FALSE;
-		}
-
-		float fitness = 4.0 - error;
+		float fitness = 1.0 - error;
 		neat_set_fitness(neat, i, fitness * fitness);
 
 		neat_increase_time_alive(neat, i);
 	}
 
 	neat_epoch(neat);
+
+	frame++;
 
 	gtk_widget_queue_draw(GTK_WIDGET(data));
 
@@ -156,15 +219,27 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 				    &color);
 	gdk_cairo_set_source_rgba(cr, &color);
 
-	for(size_t y = 0; y < 4; y++){
-		for(size_t x = 0; x < 5; x++){
+	cairo_set_font_size(cr, 13);
+
+	cairo_move_to(cr, 3, 13);
+	char frame_text[256];
+	snprintf(frame_text, 256, "Frame: %d", (int)frame);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	guint xoffset = 80;
+	width -= xoffset;
+	size_t xamount = 4;
+	size_t yamount = 5;
+	for(size_t y = 0; y < yamount; y++){
+		for(size_t x = 0; x < xamount; x++){
 			draw_neat_network(cr,
 					  context,
-					  x + y * 5,
-					  x * (width / 5),
-					  y * (height / 4),
-					  width / 5,
-					  height / 4);
+					  x + y * xamount,
+					  x * (width / xamount) + xoffset,
+					  y * (height / yamount),
+					  width / xamount,
+					  height / yamount);
 		}
 	}
 
@@ -220,7 +295,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 			 G_CALLBACK(configure),
 			 NULL);
 
-	g_timeout_add(50, tick, drawing_area);
+	g_timeout_add(10, tick, drawing_area);
 
 	gtk_widget_show_all(window);
 
@@ -229,6 +304,8 @@ static void activate(GtkApplication *app, gpointer user_data)
 
 int main(int argc, char *argv[])
 {	
+	srand(time(NULL));
+
 	GtkApplication *app = gtk_application_new("org.tversteeg.neatc",
 						  G_APPLICATION_FLAGS_NONE);
 	g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
