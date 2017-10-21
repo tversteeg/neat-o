@@ -29,6 +29,7 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome)
 	assert(genome->net);
 
 	size_t bytes = sizeof(int) * genome->net->nweights;
+	assert(bytes > 0);
 	genome->innovations = realloc(genome->innovations, bytes);
 	assert(genome->innovations);
 
@@ -98,6 +99,28 @@ static void neat_genome_add_neuron(struct neat_genome *genome, int innovation)
 	neat_genome_add_link(genome, innovation);
 }
 
+static void neat_genome_mutate_weight(struct neat_genome *genome,
+				      int innovation)
+{
+	assert(genome);
+	assert(genome->net);
+
+	if(genome->used_weights == 0){
+		return;
+	}
+
+	size_t select_weight_offset = rand() % genome->used_weights;
+
+	/* Loop over the available weight to find the randomly selected one */
+	for(size_t i = 0; i < genome->net->nweights; i++){
+		if(genome->net->weight[i] != 0.0f && !select_weight_offset--){
+			genome->net->weight[i] = neat_random_two();
+			return;
+		}
+	}
+
+}
+
 struct neat_genome *neat_genome_create(struct neat_config config,
 				       int innovation)
 {
@@ -148,10 +171,17 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 	assert(parent1);
 	assert(parent2);
 
+	/* Take the biggest parent as the base */
+	if(parent2->net->nweights > parent1->net->nweights){
+		const struct neat_genome *tmp = parent1;
+		parent1 = parent2;
+		parent2 = tmp;
+	}
+
 	struct neat_genome *child = neat_genome_copy(parent1);
 
 	//TODO fix enabling
-	for(size_t i = 0; i < child->net->nweights; i++){
+	for(size_t i = 0; i < parent2->net->nweights; i++){
 		int in1 = parent1->innovations[i];
 		int in2 = parent2->innovations[i];
 		if(in1 == in2){
@@ -175,6 +205,11 @@ void neat_genome_mutate(struct neat_genome *genome,
 	assert(innovation > 0);
 
 	float random = (float)rand() / (float)RAND_MAX;
+	if(random < config.genome_weight_mutation_probability){
+		neat_genome_mutate_weight(genome, innovation);
+	}
+
+	random = (float)rand() / (float)RAND_MAX;
 	if(random < config.genome_add_neuron_mutation_probability){
 		neat_genome_add_neuron(genome, innovation);
 		return;

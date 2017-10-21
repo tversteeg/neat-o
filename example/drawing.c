@@ -5,6 +5,8 @@
 #include <nn.h>
 #include <neat.h>
 
+guint thread;
+
 static cairo_surface_t *surface = NULL;
 static neat_t neat = NULL;
 static size_t frame = 0;
@@ -30,6 +32,7 @@ static struct neat_config config = {
 
 	.genome_add_neuron_mutation_probability = 0.5,
 	.genome_add_link_mutation_probability = 0.1,
+	.genome_weight_mutation_probability = 0.8,
 
 	.genome_minimum_ticks_alive = 100,
 	.genome_compatibility_treshold = 0.2
@@ -73,10 +76,10 @@ static void draw_weight_line(cairo_t *cr,
 {
 	cairo_save(cr);
 	if(value < 0.0){
-		value = 0.5 + value / 4.0;
+		value = 1.0 + value / 2.0;
 		cairo_set_source_rgb(cr, 1.0, value, value);
 	}else{
-		value = value / 4.0;
+		value = value / 2.0;
 		cairo_set_source_rgb(cr, value, value, value);
 	}
 	cairo_move_to (cr, startx, starty);
@@ -229,8 +232,8 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 	guint xoffset = 80;
 	width -= xoffset;
-	size_t xamount = 4;
-	size_t yamount = 5;
+	size_t xamount = 2;
+	size_t yamount = 3;
 	for(size_t y = 0; y < yamount; y++){
 		for(size_t x = 0; x < xamount; x++){
 			draw_neat_network(cr,
@@ -269,6 +272,8 @@ static gboolean configure(GtkWidget *widget,
 
 static void close_window()
 {
+	g_source_remove(thread);
+
 	if(surface){
 		cairo_surface_destroy(surface);
 	}
@@ -295,7 +300,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 			 G_CALLBACK(configure),
 			 NULL);
 
-	g_timeout_add(10, tick, drawing_area);
+	thread = g_timeout_add(10, tick, drawing_area);
 
 	gtk_widget_show_all(window);
 
