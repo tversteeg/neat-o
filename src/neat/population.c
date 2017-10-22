@@ -94,6 +94,9 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 
 	/* Add genome to species if the representant matches the genome */
 	for(size_t i = 0; i < p->nspecies; i++){
+		if(p->species[i]->ngenomes == 0){
+			continue;
+		}
 		struct neat_genome *species_representant =
 			neat_species_get_representant(p->species[i]);
 		if(neat_genome_is_compatible(genome,
@@ -110,7 +113,7 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 }
 
 static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
-						       struct neat_species *s)
+						      struct neat_species *s)
 {
 	assert(p);
 	assert(s);
@@ -129,11 +132,16 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 		 * species
 		 */
 		if(random_species == s){
+			/* We can't move the index lower than 0 */
 			if(p->species[0] == random_species){
 				random_species++;
 			}else{
 				random_species--;
 			}
+		}
+
+		if(random_species->ngenomes == 0){
+			return NULL;
 		}
 
 		return neat_species_select_genitor(random_species);
@@ -154,11 +162,13 @@ static void neat_crossover(struct neat_pop *p,
 	struct neat_genome *child;
 	float random = (float)rand() / (float)RAND_MAX;
 	if(random < p->conf.species_crossover_probability){
-		/* Do a crossover with 2 parents */
+		/* Do a crossover with 2 parents if parent2 is valid */
 		struct neat_genome *parent2 = neat_crossover_get_parent2(p, s);
-		assert(parent2);
-
-		child = neat_genome_reproduce(parent, parent2);
+		if(parent2){
+			child = neat_genome_reproduce(parent, parent2);
+		}else{
+			child = neat_genome_copy(parent);
+		}
 	}else{
 		/* Else copy the first parent */
 		child = neat_genome_copy(parent);
@@ -168,7 +178,7 @@ static void neat_crossover(struct neat_pop *p,
 	if(random < p->conf.mutate_species_crossover_probability){
 		neat_genome_mutate(child, p->conf, p->innovation);
 	}
-	
+
 	neat_replace_genome(p, worst_genome, child);
 	neat_genome_destroy(child);
 }
@@ -201,6 +211,12 @@ static void neat_reproduce(struct neat_pop *p,
 		 * there is
 		 */
 		struct neat_genome *genitor = neat_species_select_genitor(s);
+		/* Continue with finding proper species if the genitor could
+		 * not be found
+		 */
+		if(!genitor){
+			continue;
+		}
 
 		neat_crossover(p, s, worst_genome, genitor);
 

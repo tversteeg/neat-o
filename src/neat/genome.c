@@ -119,7 +119,22 @@ static void neat_genome_mutate_weight(struct neat_genome *genome,
 			return;
 		}
 	}
+}
 
+static void neat_genome_mutate_all_weights(struct neat_genome *genome,
+					   int innovation)
+{
+	assert(genome);
+	assert(genome->net);
+
+	/* Loop over the available weight to find the randomly selected one */
+	for(size_t i = 0; i < genome->net->nweights; i++){
+		float *weight = genome->net->weight + i;
+		if(*weight != 0.0f){
+			*weight = neat_random_two();
+			return;
+		}
+	}
 }
 
 struct neat_genome *neat_genome_create(struct neat_config config,
@@ -160,8 +175,10 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	new->net = nn_ffnet_copy(genome->net);
 	assert(new->net);
 
+	new->innovations = NULL;
 	size_t bytes = neat_genome_allocate_innovations(new);
 	memcpy(new->innovations, genome->innovations, bytes);
+	assert(new->innovations);
 
 	return new;
 }
@@ -223,6 +240,11 @@ void neat_genome_mutate(struct neat_genome *genome,
 	random = (float)rand() / (float)RAND_MAX;
 	if(random < config.genome_weight_mutation_probability){
 		neat_genome_mutate_weight(genome, innovation);
+	}
+
+	random = (float)rand() / (float)RAND_MAX;
+	if(random < config.genome_all_weights_mutation_probability){
+		neat_genome_mutate_all_weights(genome, innovation);
 	}
 }
 

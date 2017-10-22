@@ -20,6 +20,7 @@ struct neat_config{
 	float genome_add_neuron_mutation_probability;
 	float genome_add_link_mutation_probability;
 	float genome_weight_mutation_probability;
+	float genome_all_weights_mutation_probability;
 
 	/* Genomes */
 	size_t genome_minimum_ticks_alive;

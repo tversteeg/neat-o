@@ -5,12 +5,12 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 20
+#define POP_SIZE 300
 
 static struct neat_config config = {
 	.network_inputs = 2,
 	.network_outputs = 1,
-	.network_hidden_nodes = 4,
+	.network_hidden_nodes = 2,
 
 	.population_size = POP_SIZE,
 
@@ -18,19 +18,16 @@ static struct neat_config config = {
 	.interspecies_crossover_probability = 0.05,
 	.mutate_species_crossover_probability = 0.25,
 
-	.genome_add_neuron_mutation_probability = 0.05,
-	.genome_add_link_mutation_probability = 0.01,
-	.genome_weight_mutation_probability = 0.8,
+	.genome_add_neuron_mutation_probability = 0.03,
+	.genome_add_link_mutation_probability = 0.06,
+	.genome_weight_mutation_probability = 0.09,
+	.genome_all_weights_mutation_probability = 0.21,
 
 	.genome_minimum_ticks_alive = 100,
 	.genome_compatibility_treshold = 0.2
 };
 
-static guint thread;
-
-static cairo_surface_t *surface = NULL;
 static neat_t neat = NULL;
-static size_t frame = 0;
 
 static float xor_inputs[4][2] = {
 	{0.0f, 0.0f},
@@ -39,12 +36,54 @@ static float xor_inputs[4][2] = {
 	{1.0f, 1.0f}
 };
 static float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
+
+/* Demo specific declarations */
+static guint thread;
+static cairo_surface_t *surface = NULL;
+
 static float errors[POP_SIZE];
+static size_t frame = 0;
+static guint renderx = 1;
+static guint rendery = 1;
+static guint rendertick = 0;
 
 static void setup_neat()
 {
 	neat = neat_create(config);
 	assert(neat);
+}
+
+static gboolean tick(gpointer data)
+{
+	for(size_t i = 0; i < config.population_size; i++){
+		float error = 0.0f;
+		for(int k = 0; k < 4; k++){
+			const float *results = neat_run(neat, i, xor_inputs[k]);
+
+			error += fabs(results[0] - xor_outputs[k]);
+		}
+
+		errors[i] = error;
+		float fitness = 4.0 - error;
+		neat_set_fitness(neat, i, fitness * fitness);
+
+		neat_increase_time_alive(neat, i);
+	}
+
+	neat_epoch(neat);
+
+	frame++;
+
+	/* The amount of cycles before each network is rendered is decided
+	 * by the size of the network because Cairo is slow at rendering
+	 * a lot of lines
+	 */
+	if(++rendertick > renderx * rendery){
+		rendertick = 0;
+		gtk_widget_queue_draw(GTK_WIDGET(data));
+	}
+
+	return TRUE;
 }
 
 static void draw_neuron_circle(cairo_t *cr,
@@ -190,30 +229,6 @@ static void draw_neat_network(cairo_t *cr,
 	}
 }
 
-static gboolean tick(gpointer data)
-{
-	size_t xor_index = rand() % 4;
-	for(int i = 0; i < config.population_size; i++){
-		const float *results = neat_run(neat, i, xor_inputs[xor_index]);
-
-		float error = fabs(results[0] - xor_outputs[xor_index]);
-		errors[i] = error;
-
-		float fitness = 1.0 - error;
-		neat_set_fitness(neat, i, fitness * fitness);
-
-		neat_increase_time_alive(neat, i);
-	}
-
-	neat_epoch(neat);
-
-	frame++;
-
-	gtk_widget_queue_draw(GTK_WIDGET(data));
-
-	return TRUE;
-}
-
 static void clear()
 {
 	cairo_t *cr = cairo_create(surface);
@@ -248,17 +263,15 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 	guint xoffset = 100;
 	width -= xoffset;
-	size_t xamount = 4;
-	size_t yamount = 5;
-	for(size_t y = 0; y < yamount; y++){
-		for(size_t x = 0; x < xamount; x++){
+	for(size_t y = 0; y < rendery; y++){
+		for(size_t x = 0; x < renderx; x++){
 			draw_neat_network(cr,
 					  context,
-					  x + y * xamount,
-					  x * (width / xamount) + xoffset,
-					  y * (height / yamount),
-					  width / xamount,
-					  height / yamount);
+					  x + y * renderx,
+					  x * (width / renderx) + xoffset,
+					  y * (height / rendery),
+					  width / renderx,
+					  height / rendery);
 		}
 	}
 
@@ -295,6 +308,22 @@ static void close_window()
 	}
 }
 
+static gboolean change_render_x(GtkSpinButton *spin, gpointer data)
+{
+	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
+	renderx = (int)gtk_adjustment_get_value(adjustment);
+
+	return TRUE;
+}
+
+static gboolean change_render_y(GtkSpinButton *spin, gpointer data)
+{
+	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
+	rendery = (int)gtk_adjustment_get_value(adjustment);
+
+	return TRUE;
+}
+
 static void activate(GtkApplication *app, gpointer user_data)
 {
 	GtkWidget *window = gtk_application_window_new(app);
@@ -304,8 +333,28 @@ static void activate(GtkApplication *app, gpointer user_data)
 
 	gtk_container_set_border_width(GTK_CONTAINER (window), 8);
 
+	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+	gtk_container_add(GTK_CONTAINER(window), box);
+
+	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+	gtk_box_pack_start(GTK_BOX(box), hbox, FALSE, FALSE, 0);
+
+	GtkWidget *xspinner = gtk_spin_button_new_with_range(1, POP_SIZE, 1);
+	g_signal_connect(xspinner,
+			 "value-changed",
+			 G_CALLBACK(change_render_x),
+			 NULL);
+	gtk_container_add(GTK_CONTAINER(hbox), xspinner);
+
+	GtkWidget *yspinner = gtk_spin_button_new_with_range(1, POP_SIZE, 1);
+	g_signal_connect(yspinner,
+			 "value-changed",
+			 G_CALLBACK(change_render_y),
+			 NULL);
+	gtk_container_add(GTK_CONTAINER(hbox), yspinner);
+
 	GtkWidget *frame = gtk_frame_new(NULL);
-	gtk_container_add(GTK_CONTAINER(window), frame);
+	gtk_box_pack_end(GTK_BOX(box), frame, TRUE, TRUE, 0);
 
 	GtkWidget *drawing_area = gtk_drawing_area_new();
 	gtk_widget_set_size_request(drawing_area, 300, 300);
@@ -316,7 +365,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 			 G_CALLBACK(configure),
 			 NULL);
 
-	thread = g_timeout_add(10, tick, drawing_area);
+	thread = g_timeout_add(5, tick, drawing_area);
 
 	gtk_widget_show_all(window);
 
