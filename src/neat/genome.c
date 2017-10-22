@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <math.h>
 #include <assert.h>
 
 static inline float neat_random_two()
@@ -185,6 +186,9 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 		int in1 = parent1->innovations[i];
 		int in2 = parent2->innovations[i];
 		if(in1 == in2){
+			if(parent1->fitness < parent2->fitness){
+				child->net->weight[i] = parent2->net->weight[i];
+			}
 			continue;
 		}
 		if(in1 == 0 && in2 != 0){
@@ -205,11 +209,6 @@ void neat_genome_mutate(struct neat_genome *genome,
 	assert(innovation > 0);
 
 	float random = (float)rand() / (float)RAND_MAX;
-	if(random < config.genome_weight_mutation_probability){
-		neat_genome_mutate_weight(genome, innovation);
-	}
-
-	random = (float)rand() / (float)RAND_MAX;
 	if(random < config.genome_add_neuron_mutation_probability){
 		neat_genome_add_neuron(genome, innovation);
 		return;
@@ -219,6 +218,11 @@ void neat_genome_mutate(struct neat_genome *genome,
 	if(random < config.genome_add_link_mutation_probability){
 		neat_genome_add_link(genome, innovation);
 		return;
+	}
+
+	random = (float)rand() / (float)RAND_MAX;
+	if(random < config.genome_weight_mutation_probability){
+		neat_genome_mutate_weight(genome, innovation);
 	}
 }
 
@@ -251,9 +255,46 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 			       const struct neat_genome *other,
 			       float treshold)
 {
-	//TODO implement by checking the distance between the genomes
+	assert(genome);
+	assert(other);
+	assert(genome->net);
+	assert(other->net);
+	assert(genome->innovations);
+	assert(other->innovations);
 
-	return true;
+	size_t weights1 = genome->net->nweights;
+	size_t weights2 = other->net->nweights;
+	size_t min_weights;
+	size_t max_weights;
+	if(weights1 < weights2){
+		min_weights = weights1;
+		max_weights = weights2;
+	}else{
+		min_weights = weights2;
+		max_weights = weights1;
+	}
+
+	size_t excess = max_weights - min_weights;
+	size_t disjoint = 0;
+	size_t matching = 0;
+	float weight_sum = 0.0;
+
+	for(size_t i = 0; i < min_weights; i++){
+		if(genome->innovations[i] == other->innovations[i]){
+			float weight1 = genome->net->weight[i];
+			float weight2 = other->net->weight[i];
+			weight_sum += fabs(weight1 - weight2);
+			matching++;
+		}else{
+			disjoint++;
+		}
+	}
+
+	float distance = 1.0 * excess / (float)max_weights;
+	distance += 1.5 * disjoint / (float)max_weights;
+	distance += 0.4 * weight_sum / (float)matching;
+
+	return distance < treshold;
 }
 
 void neat_genome_print_net(const struct neat_genome *genome)

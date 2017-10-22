@@ -151,12 +151,20 @@ static void neat_crossover(struct neat_pop *p,
 	assert(s);
 	assert(parent);
 
-	struct neat_genome *parent2 = neat_crossover_get_parent2(p, s);
-	assert(parent2);
-
-	struct neat_genome *child = neat_genome_reproduce(parent, parent2);
-
+	struct neat_genome *child;
 	float random = (float)rand() / (float)RAND_MAX;
+	if(random < p->conf.species_crossover_probability){
+		/* Do a crossover with 2 parents */
+		struct neat_genome *parent2 = neat_crossover_get_parent2(p, s);
+		assert(parent2);
+
+		child = neat_genome_reproduce(parent, parent2);
+	}else{
+		/* Else copy the first parent */
+		child = neat_genome_copy(parent);
+	}
+
+	random = (float)rand() / (float)RAND_MAX;
 	if(random < p->conf.mutate_species_crossover_probability){
 		neat_genome_mutate(child, p->conf, p->innovation);
 	}
@@ -194,12 +202,7 @@ static void neat_reproduce(struct neat_pop *p,
 		 */
 		struct neat_genome *genitor = neat_species_select_genitor(s);
 
-		float random = (float)rand() / (float)RAND_MAX;
-		if(random < p->conf.species_crossover_probability){
-			neat_crossover(p, s, worst_genome, genitor);
-		}else{
-			neat_replace_genome(p, worst_genome, genitor);
-		}
+		neat_crossover(p, s, worst_genome, genitor);
 
 		neat_speciate_genome(p, worst_genome);
 
@@ -308,6 +311,23 @@ const struct nn_ffnet *neat_get_network(neat_t population, size_t genome_id)
 	assert(genome_id < p->ngenomes);
 
 	return p->genomes[genome_id]->net;
+}
+
+size_t neat_get_species_id(neat_t population, size_t genome_id)
+{
+	struct neat_pop *p = population;
+	assert(p);
+	assert(genome_id < p->ngenomes);
+
+	struct neat_genome *genome = p->genomes[genome_id];
+
+	for(size_t i = 0; i < p->nspecies; i++){
+		if(neat_species_contains_genome(p->species[i], genome)){
+			return i;
+		}
+	}
+
+	return 0;
 }
 
 void neat_print_net(neat_t population, size_t genome_id)

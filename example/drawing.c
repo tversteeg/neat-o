@@ -5,7 +5,28 @@
 #include <nn.h>
 #include <neat.h>
 
-guint thread;
+#define POP_SIZE 20
+
+static struct neat_config config = {
+	.network_inputs = 2,
+	.network_outputs = 1,
+	.network_hidden_nodes = 4,
+
+	.population_size = POP_SIZE,
+
+	.species_crossover_probability = 0.2,
+	.interspecies_crossover_probability = 0.05,
+	.mutate_species_crossover_probability = 0.25,
+
+	.genome_add_neuron_mutation_probability = 0.05,
+	.genome_add_link_mutation_probability = 0.01,
+	.genome_weight_mutation_probability = 0.8,
+
+	.genome_minimum_ticks_alive = 100,
+	.genome_compatibility_treshold = 0.2
+};
+
+static guint thread;
 
 static cairo_surface_t *surface = NULL;
 static neat_t neat = NULL;
@@ -18,25 +39,7 @@ static float xor_inputs[4][2] = {
 	{1.0f, 1.0f}
 };
 static float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
-
-static struct neat_config config = {
-	.network_inputs = 2,
-	.network_outputs = 1,
-	.network_hidden_nodes = 4,
-
-	.population_size = 20,
-
-	.species_crossover_probability = 0.2,
-	.interspecies_crossover_probability = 0.05,
-	.mutate_species_crossover_probability = 0.25,
-
-	.genome_add_neuron_mutation_probability = 0.5,
-	.genome_add_link_mutation_probability = 0.1,
-	.genome_weight_mutation_probability = 0.8,
-
-	.genome_minimum_ticks_alive = 100,
-	.genome_compatibility_treshold = 0.2
-};
+static float errors[POP_SIZE];
 
 static void setup_neat()
 {
@@ -100,13 +103,26 @@ static void draw_neat_network(cairo_t *cr,
 	int radius = MIN(width, height) / 20;
 	int xoffset = width / 10, yoffset = height / 20;
 
+	size_t species = neat_get_species_id(neat, network);
+
+	cairo_set_font_size(cr, 13);
+	cairo_move_to(cr, x, y + 13);
+	char text[256];
+	snprintf(text,
+		 256,
+		 "Species: %d, err: %g",
+		 (int)species,
+		 errors[network]);
+	cairo_show_text(cr, text); 
+	cairo_stroke(cr);
+
 	const struct nn_ffnet *n = neat_get_network(neat, network);
 
 	float *neuron = n->output;
 	float *weight = n->weight;
 
 	x += radius + xoffset;
-	y += radius + yoffset;
+	y += radius + yoffset + 13;
 	guint xinc = radius * 2 + xoffset;
 	guint yinc = radius * 2 + yoffset;
 	guint starty = y;
@@ -181,6 +197,7 @@ static gboolean tick(gpointer data)
 		const float *results = neat_run(neat, i, xor_inputs[xor_index]);
 
 		float error = fabs(results[0] - xor_outputs[xor_index]);
+		errors[i] = error;
 
 		float fitness = 1.0 - error;
 		neat_set_fitness(neat, i, fitness * fitness);
@@ -223,17 +240,16 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 	gdk_cairo_set_source_rgba(cr, &color);
 
 	cairo_set_font_size(cr, 13);
-
 	cairo_move_to(cr, 3, 13);
 	char frame_text[256];
 	snprintf(frame_text, 256, "Frame: %d", (int)frame);
 	cairo_show_text(cr, frame_text); 
 	cairo_stroke(cr);
 
-	guint xoffset = 80;
+	guint xoffset = 100;
 	width -= xoffset;
-	size_t xamount = 2;
-	size_t yamount = 3;
+	size_t xamount = 4;
+	size_t yamount = 5;
 	for(size_t y = 0; y < yamount; y++){
 		for(size_t x = 0; x < xamount; x++){
 			draw_neat_network(cr,
