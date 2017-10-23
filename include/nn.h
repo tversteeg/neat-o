@@ -12,13 +12,12 @@ enum nn_activation{
 
 struct nn_ffnet{
 	size_t ninputs, nhiddens, noutputs, nhidden_layers;
-	size_t nweights, nneurons;
+	size_t nweights, nneurons, nactivations;
 
 	float *weight, *output;
+	char *activation;
 
 	float bias;
-
-	enum nn_activation hidden_activation, output_activation;
 };
 
 /* Create a new feedforward neural net, the bias is set to -1.0 by default

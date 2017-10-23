@@ -111,7 +111,7 @@ TEST nn_randomize()
 
 	nn_ffnet_randomize(net);
 
-	ASSERT(net->weight[0] != 0.0);
+	ASSERT(net->weight[0] != 0.0f);
 
 	nn_ffnet_destroy(net);
 	PASS();
