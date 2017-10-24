@@ -64,7 +64,7 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 
 	net->weight = (float*)((char*)net + sizeof(struct nn_ffnet));
 	net->output = net->weight + net->nweights;
-	net->activation = (char*)net->output + net->nneurons;
+	net->activation = (char*)(net->output + net->nneurons);
 }
 
 static size_t nn_ffnet_hidden_weights(size_t input_count,
@@ -212,98 +212,60 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 	assert(net);
 	assert(net->nhiddens > 0);
 
-	size_t old_output_off = nn_ffnet_hidden_weights(net->ninputs,
-							net->nhiddens,
-							net->noutputs,
-							net->nhidden_layers);
+	/* Creating a new network is the easiest solution since all the pointers
+	 * will be put in the right position for us by default
+	 */
+	struct nn_ffnet *new = nn_ffnet_create(net->ninputs,
+					       net->nhiddens,
+					       net->noutputs,
+					       net->nhidden_layers + 1);
+	assert(new);
 
-	size_t output_weights = nn_ffnet_output_weights(net->ninputs,
-							net->nhiddens,
-							net->noutputs,
-							net->nhidden_layers);
+	/* ACTIVATIONS */
+	/* Copy the hidden activations */
+	memcpy(new->activation,
+	       net->activation,
+	       net->nhiddens * net->nhidden_layers);
 
-	/* Resize the whole network */
-	net->nhidden_layers++;
-	size_t total_weights = nn_ffnet_total_weights(net->ninputs,
-						      net->nhiddens,
-						      net->noutputs,
-						      net->nhidden_layers);
+	/* Copy the output activations */
+	memcpy(new->activation + new->nactivations - new->noutputs,
+	       net->activation + net->nactivations - net->noutputs,
+	       net->noutputs);
 
-	size_t total_neurons = nn_ffnet_total_neurons(net->ninputs,
-						      net->nhiddens,
-						      net->noutputs,
-						      net->nhidden_layers);
+	/* WEIGHTS */
+	/* Copy the hidden and the input weights */
+	memcpy(new->weight,
+	       net->weight,
+	       sizeof(float) * (net->nweights - net->noutputs));
 
-	size_t total_activs = nn_ffnet_total_activations(net->nhiddens,
-							 net->noutputs,
-							 net->nhidden_layers);
+	/* Copy the output weights */
+	memcpy(new->weight + new->nweights - new->noutputs,
+	       net->weight + net->nweights - net->noutputs,
+	       sizeof(float) * net->noutputs);
 
-	size_t items_bytes = sizeof(float) * (total_weights + total_neurons);
-	items_bytes += sizeof(char) * total_activs;
+	/* Find where the location and amount of the new empty weights */
+	float *new_weight = new->weight + net->nweights - net->noutputs;
+	size_t nnew_weights = new->nweights - net->nweights;
 
-	net = realloc(net, sizeof(struct nn_ffnet) + items_bytes);
-	assert(net);
+	/* Destroy the old one */
+	nn_ffnet_destroy(net);
 
-	float* new_output = net->weight + net->nweights;
-	char* new_activ = (char*)new_output + net->nactivations;
-
-	/* Move the activations */
-	memmove(net->activation, new_activ, net->nactivations);
-
-	size_t old_nweights = net->nweights;
-	net->nweights = total_weights;
-	net->nneurons = total_neurons;
-
-	/* Move the pointers */
-	nn_ffnet_set_pointers(net);
-
-	/* Move the output weights */
-	size_t new_output_off = nn_ffnet_hidden_weights(net->ninputs,
-							net->nhiddens,
-							net->noutputs,
-							net->nhidden_layers);
-
-	size_t output_weight_bytes = sizeof(float) * output_weights;
-	memmove(net->weight + new_output_off,
-		net->weight + old_output_off,
-		output_weight_bytes); 
-
-	/* Set most of the new hidden weights to 0.0 */
-	size_t weights_diff =  total_weights - old_nweights;
-	memset(net->weight + old_output_off, 0, sizeof(float) * weights_diff);
-
-	/* Set all the neurons to 0.0 */
-	size_t output_bytes = sizeof(float) * total_neurons;
-	memset(net->output, 0, output_bytes);
-
-	/* Set the hidden weights that already had a connection to 1.0 */
-	size_t nweights = net->nhiddens + 1;
-	if(net->nhidden_layers == 1){
-		nweights = net->ninputs + 1;
+	size_t nweights_per_layer;
+	if(new->nhidden_layers == 1){
+		nweights_per_layer = new->ninputs + 1;
+	}else{
+		nweights_per_layer = new->nhiddens + 1;
 	}
 
-	float *current = net->weight + old_output_off;
-	float *prev = current - net->nhiddens * nweights;
-	
-	/* Offset the current with bias */
-	current++;
+	/* Skip the bias */
+	new_weight++;
+	float *new_weight_finish = new_weight + nnew_weights;
+	/* Set each weight directly connected to the node before it */
+	do{
+		*new_weight = weight;
+	}while((new_weight += nweights_per_layer + 1) < new_weight_finish);
 
-	for(size_t i = 0; i < net->nhiddens; i++){
-		/* Check if there are any connections in the previous layer */
-		int has_connection = 0;
-
-		for(size_t j = 0; j < nweights; j++){
-			has_connection += *prev++ != 0.0;
-		}
-
-		if(has_connection){
-			*current = weight;
-		}
-		/* Increment it so it moves to the next input */
-		current += nweights + 1;
-	}
-
-	return net;
+	return new;
 }
 
 void nn_ffnet_set_activations(struct nn_ffnet *net,
@@ -313,7 +275,7 @@ void nn_ffnet_set_activations(struct nn_ffnet *net,
 	assert(net);
 
 	char *activation = net->activation;
-	for(size_t i = 0; i < net->nneurons - net->noutputs; i++){
+	for(size_t i = 0; i < net->nactivations - net->noutputs; i++){
 		*activation++ = (char)hidden;
 	}
 
@@ -362,9 +324,6 @@ float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs)
 	float *weight = net->weight;
 	float *output = net->output + net->ninputs;
 	char *activation = net->activation;
-	for(size_t i = 0; i < net->nactivations; i++){
-		printf("%d ", (int)net->activation[i]);
-	}
 	for(size_t i = 0; i < net->nhidden_layers; i++){
 		/* First get all the inputs, then get all the hidden layers */
 		size_t nweights = net->nhiddens;
@@ -381,7 +340,9 @@ float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs)
 				sum += *weight++ * input[k];
 			}
 
-			printf("%d:%d(%d) ", (int)i, (int)j, (int)*activation);
+			if(*activation > 3 || *activation < 0){
+				printf("%d:%d(%d) ", (int)i, (int)j, (int)*activation);
+			}
 			*output++ = nn_activate(*activation++, sum);
 		}
 
