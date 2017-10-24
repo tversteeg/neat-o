@@ -151,7 +151,7 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 				      1);
 
 	nn_ffnet_set_activations(genome->net,
-				 NN_ACTIVATION_PASSTHROUGH,
+				 NN_ACTIVATION_RELU,
 				 NN_ACTIVATION_SIGMOID);
 
 	nn_ffnet_randomize(genome->net);

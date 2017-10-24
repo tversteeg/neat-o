@@ -258,7 +258,7 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 	}
 
 	/* Skip the bias */
-	new_weight++;
+	//new_weight++;
 	float *new_weight_finish = new_weight + nnew_weights;
 	/* Set each weight directly connected to the node before it */
 	do{
@@ -340,9 +340,6 @@ float *nn_ffnet_run(struct nn_ffnet *net, const float *inputs)
 				sum += *weight++ * input[k];
 			}
 
-			if(*activation > 3 || *activation < 0){
-				printf("%d:%d(%d) ", (int)i, (int)j, (int)*activation);
-			}
 			*output++ = nn_activate(*activation++, sum);
 		}
 

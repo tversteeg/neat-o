@@ -5,7 +5,7 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 300
+#define POP_SIZE 4
 
 static struct neat_config config = {
 	.network_inputs = 2,
@@ -86,18 +86,38 @@ static gboolean tick(gpointer data)
 	return TRUE;
 }
 
-static void draw_neuron_circle(cairo_t *cr,
-			       guint x,
-			       guint y,
-			       int radius,
-			       float value,
-			       bool is_bias)
+static void draw_neuron(cairo_t *cr,
+			guint x,
+			guint y,
+			int radius,
+			float value,
+			bool is_bias,
+			enum nn_activation activation)
 {
 	cairo_save(cr);
 	if(is_bias){
 		radius /= 1.5;
+		cairo_arc(cr, x, y, radius, 0, 2 * G_PI);
+	}else{
+		switch(activation){
+			case NN_ACTIVATION_PASSTHROUGH:
+				cairo_move_to(cr, x - radius, y - radius);
+				cairo_line_to(cr, x - radius, y + radius);
+				cairo_line_to(cr, x + radius, y);
+				cairo_close_path(cr);
+				break;
+			case NN_ACTIVATION_SIGMOID:
+				cairo_rectangle(cr,
+						x - radius / 2,
+						y - radius / 2,
+						radius,
+						radius);
+				break;
+			default:
+				cairo_arc(cr, x, y, radius, 0, 2 * G_PI);
+				break;
+		}
 	}
-	cairo_arc(cr, x, y, radius, 0, 2 * G_PI);
 	if(value < 0.0){
 		float converted_value = 1.0 + value / 2.0;
 		cairo_set_source_rgb(cr, 1.0, converted_value, converted_value);
@@ -109,24 +129,26 @@ static void draw_neuron_circle(cairo_t *cr,
 	cairo_stroke(cr);
 }
 
-static void draw_weight_line(cairo_t *cr,
-			     guint startx,
-			     guint starty,
-			     guint endx,
-			     guint endy,
-			     float value)
+static void draw_weight(cairo_t *cr,
+			guint startx,
+			guint starty,
+			guint endx,
+			guint endy,
+			float value)
 {
 	cairo_save(cr);
-	if(value < 0.0){
+	if(value < 0.001 && value > -0.001){
+		cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
+	}else if(value < 0.0){
 		value = 1.0 + value / 2.0;
-		cairo_set_source_rgb(cr, 1.0, value, value);
+		cairo_set_source_rgb(cr, value, 1.0, value);
 	}else{
 		value = value / 2.0;
 		cairo_set_source_rgb(cr, value, value, value);
 	}
 	cairo_move_to (cr, startx, starty);
 	cairo_line_to (cr, endx, endy);
-	cairo_set_line_width(cr, 1.0 + value);
+	cairo_set_line_width(cr, 3.0 + value);
 	cairo_stroke(cr);
 	cairo_restore(cr);
 }
@@ -159,6 +181,7 @@ static void draw_neat_network(cairo_t *cr,
 
 	float *neuron = n->output;
 	float *weight = n->weight;
+	char *activation = n->activation;
 
 	x += radius + xoffset;
 	y += radius + yoffset + 13;
@@ -167,25 +190,20 @@ static void draw_neat_network(cairo_t *cr,
 	guint starty = y;
 
 	for(size_t j = 0; j < n->nhiddens; j++){
-		draw_weight_line(cr,
-				 x,
-				 y,
-				 x + xinc,
-				 y + yinc * (j + 1),
-				 *weight++); 
+		draw_weight(cr, x, y, x + xinc, y + yinc * (j + 1), *weight++); 
 	}
-	draw_neuron_circle(cr, x, y, radius, n->bias, true);
+	draw_neuron(cr, x, y, radius, n->bias, true, 0);
 	y += yinc;
 	for(size_t i = 0; i < n->ninputs; i++){
 		for(size_t j = 0; j < n->nhiddens; j++){
-			draw_weight_line(cr,
-					 x,
-					 y,
-					 x + xinc,
-					 y + yinc * (j - i),
-					 *weight++); 
+			draw_weight(cr,
+				    x,
+				    y,
+				    x + xinc,
+				    y + yinc * (j - i),
+				    *weight++); 
 		}
-		draw_neuron_circle(cr, x, y, radius, *neuron++, false);
+		draw_neuron(cr, x, y, radius, *neuron++, false, 0);
 		y += yinc;
 	}
 
@@ -198,25 +216,31 @@ static void draw_neat_network(cairo_t *cr,
 			next = n->noutputs;
 		}
 		for(size_t j = 0; j < next; j++){
-			draw_weight_line(cr,
-					 x,
-					 y,
-					 x + xinc,
-					 y + yinc * (j + 1),
-					 *weight++); 
+			draw_weight(cr,
+				    x,
+				    y,
+				    x + xinc,
+				    y + yinc * (j + 1),
+				    *weight++); 
 		}
-		draw_neuron_circle(cr, x, y, radius, n->bias, true);
+		draw_neuron(cr, x, y, radius, n->bias, true, 0);
 		y += yinc;
 		for(size_t j = 0; j < n->nhiddens; j++){
 			for(size_t k = 0; k < next; k++){
-				draw_weight_line(cr,
-						 x,
-						 y,
-						 x + xinc,
-						 y + yinc * (k - j),
-						 *weight++); 
+				draw_weight(cr,
+					    x,
+					    y,
+					    x + xinc,
+					    y + yinc * (k - j),
+					    *weight++); 
 			}
-			draw_neuron_circle(cr, x, y, radius, *neuron++, false);
+			draw_neuron(cr,
+				    x,
+				    y,
+				    radius,
+				    *neuron++,
+				    false,
+				    *activation++);
 			y += yinc;
 		}
 		x += xinc;
@@ -225,7 +249,7 @@ static void draw_neat_network(cairo_t *cr,
 
 	for(size_t i = 0; i < n->noutputs; i++){
 		y += yinc;
-		draw_neuron_circle(cr, x, y, radius, *neuron++, false);
+		draw_neuron(cr, x, y, radius, *neuron++, false, *activation++);
 	}
 }
 
