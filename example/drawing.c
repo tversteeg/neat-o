@@ -5,7 +5,7 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 4
+#define POP_SIZE 12
 
 static struct neat_config config = {
 	.network_inputs = 2,
@@ -166,6 +166,7 @@ static void draw_neat_network(cairo_t *cr,
 
 	size_t species = neat_get_species_id(neat, network);
 
+	/* Render info text */
 	cairo_set_font_size(cr, 13);
 	cairo_move_to(cr, x, y + 13);
 	char text[256];
@@ -189,20 +190,38 @@ static void draw_neat_network(cairo_t *cr,
 	guint yinc = radius * 2 + yoffset;
 	guint starty = y;
 
-	for(size_t j = 0; j < n->nhiddens; j++){
-		draw_weight(cr, x, y, x + xinc, y + yinc * (j + 1), *weight++); 
+	/* Draw weights */
+	for(size_t i = 0; i < n->nhiddens; i++){
+		for(size_t j = 0; j < n->ninputs + 1; j++){
+			draw_weight(cr,
+				    x,
+				    y + yinc * j,
+				    x + xinc,
+				    y + yinc * (i + 1),
+				    *weight++); 
+		}
 	}
+	for(size_t i = 0; i < n->nhidden_layers; i++){
+		size_t layer_count = n->nhiddens;
+		if(i == n->nhidden_layers - 1){
+			layer_count = n->noutputs;
+		}
+		for(size_t j = 0; j < layer_count; j++){
+			for(size_t k = 0; k < n->nhiddens + 1; k++){
+				draw_weight(cr,
+					    x + xinc * (i + 1),
+					    y + yinc * k,
+					    x + xinc * (i + 2),
+					    y + yinc * (j + 1),
+					    *weight++); 
+			}
+		}
+	}
+
+	/* Draw neurons */
 	draw_neuron(cr, x, y, radius, n->bias, true, 0);
 	y += yinc;
 	for(size_t i = 0; i < n->ninputs; i++){
-		for(size_t j = 0; j < n->nhiddens; j++){
-			draw_weight(cr,
-				    x,
-				    y,
-				    x + xinc,
-				    y + yinc * (j - i),
-				    *weight++); 
-		}
 		draw_neuron(cr, x, y, radius, *neuron++, false, 0);
 		y += yinc;
 	}
@@ -211,29 +230,9 @@ static void draw_neat_network(cairo_t *cr,
 	y = starty;
 
 	for(size_t i = 0; i < n->nhidden_layers; i++){
-		size_t next = n->nhiddens;
-		if(i == n->nhidden_layers - 1){
-			next = n->noutputs;
-		}
-		for(size_t j = 0; j < next; j++){
-			draw_weight(cr,
-				    x,
-				    y,
-				    x + xinc,
-				    y + yinc * (j + 1),
-				    *weight++); 
-		}
 		draw_neuron(cr, x, y, radius, n->bias, true, 0);
 		y += yinc;
 		for(size_t j = 0; j < n->nhiddens; j++){
-			for(size_t k = 0; k < next; k++){
-				draw_weight(cr,
-					    x,
-					    y,
-					    x + xinc,
-					    y + yinc * (k - j),
-					    *weight++); 
-			}
 			draw_neuron(cr,
 				    x,
 				    y,
@@ -335,7 +334,12 @@ static void close_window()
 static gboolean change_render_x(GtkSpinButton *spin, gpointer data)
 {
 	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
-	renderx = (int)gtk_adjustment_get_value(adjustment);
+	int new = (int)gtk_adjustment_get_value(adjustment);
+	if(new * rendery <= POP_SIZE){
+		renderx = new;
+	}else{
+		gtk_spin_button_set_value(spin, renderx);
+	}
 
 	return TRUE;
 }
@@ -343,7 +347,12 @@ static gboolean change_render_x(GtkSpinButton *spin, gpointer data)
 static gboolean change_render_y(GtkSpinButton *spin, gpointer data)
 {
 	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
-	rendery = (int)gtk_adjustment_get_value(adjustment);
+	int new = (int)gtk_adjustment_get_value(adjustment);
+	if(new * renderx <= POP_SIZE){
+		rendery = new;
+	}else{
+		gtk_spin_button_set_value(spin, rendery);
+	}
 
 	return TRUE;
 }
