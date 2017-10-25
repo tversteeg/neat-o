@@ -281,25 +281,31 @@ const float *neat_run(neat_t population,
 	return neat_genome_run(p->genomes[genome_id], inputs);
 }
 
-void neat_epoch(neat_t population)
+bool neat_epoch(neat_t population, size_t *worst_genome)
 {
 	struct neat_pop *p = population;
 	assert(p);
 
 	p->innovation++;
 
-	size_t worst_genome = 0;
-	if(!neat_find_worst_fitness(p, &worst_genome)){
-		return;
+	size_t worst_found_genome = 0;
+	if(!neat_find_worst_fitness(p, &worst_found_genome)){
+		return false;
 	}
 
 	/* Remove the worst genome from the species if it contains it */
 	for(size_t i = 0; i < p->nspecies; i++){
 		neat_species_remove_genome(p->species[i],
-					   p->genomes[worst_genome]);
+					   p->genomes[worst_found_genome]);
 	}
 
-	neat_reproduce(p, worst_genome);
+	neat_reproduce(p, worst_found_genome);
+
+	if(worst_genome){
+		*worst_genome = worst_found_genome;
+	}
+
+	return true;
 }
 
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness)

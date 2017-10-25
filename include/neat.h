@@ -36,7 +36,7 @@ void neat_destroy(neat_t population);
 
 const float *neat_run(neat_t population, size_t genome_id, const float *inputs);
 
-void neat_epoch(neat_t population);
+bool neat_epoch(neat_t population, size_t *worst_genome);
 
 void neat_set_fitness(neat_t population, size_t genome_id, float fitness);
 

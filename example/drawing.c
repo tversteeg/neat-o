@@ -43,6 +43,7 @@ static cairo_surface_t *surface = NULL;
 
 static float errors[POP_SIZE];
 static size_t frame = 0;
+static size_t worst = SSIZE_MAX;
 static guint renderx = 1;
 static guint rendery = 1;
 static guint rendertick = 0;
@@ -70,7 +71,7 @@ static gboolean tick(gpointer data)
 		neat_increase_time_alive(neat, i);
 	}
 
-	neat_epoch(neat);
+	neat_epoch(neat, &worst);
 
 	frame++;
 
@@ -163,6 +164,14 @@ static void draw_neat_network(cairo_t *cr,
 {
 	int radius = MIN(width, height) / 20;
 	int xoffset = width / 10, yoffset = height / 20;
+
+	if(worst == network){
+		cairo_save(cr);
+		cairo_rectangle(cr, x, y, width, height);
+		cairo_set_source_rgb(cr, 1.0, 0.5, 0.5);
+		cairo_fill(cr);
+		cairo_restore(cr);
+	}
 
 	size_t species = neat_get_species_id(neat, network);
 
