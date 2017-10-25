@@ -329,22 +329,34 @@ void neat_genome_print_net(const struct neat_genome *genome)
 	float *weight = n->weight;
 
 	printf("\nInputs -> Hiddens: ");
-	for(size_t i = 0; i < (n->ninputs + 1) * n->nhiddens; i++){
-		printf("%g ", *weight++);
+	for(size_t i = 0; i < n->nhiddens; i++){
+		if(i != 0){
+			printf(": ");
+		}
+		for(size_t j = 0; j < n->ninputs + 1; j++){
+			printf("%g ", *weight++);
+		}
 	}
-	size_t hidden_weights = (n->nhiddens + 1) * n->nhiddens;
-	for(size_t i = 1; i < n->nhidden_layers; i++){
-		printf("\n%d Hiddens -> Hiddens: ", (int)i);
-		for(size_t j = 0; j < hidden_weights; j++){
-			if((int)(*weight * 10.0) != 0.0){
-				printf("%d:%.1f ",
-				       (int)(j / n->nhiddens),
-				       *weight);
+	for(size_t i = 0; i < n->nhidden_layers - 1; i++){
+		printf("\nHiddens -> Hiddens: ");
+		for(size_t j = 0; j < n->nhiddens; j++){
+			if(j != 0){
+				printf(": ");
 			}
-			
-			weight++;
+			for(size_t k = 0; k < n->nhiddens + 1; k++){
+				printf("%g ", *weight++);
+			}
 		}
 	}
 
+	printf("\nHiddens -> Outputs: ");
+	for(size_t i = 0; i < n->noutputs; i++){
+		if(i != 0){
+			printf(": ");
+		}
+		for(size_t j = 0; j < n->nhiddens + 1; j++){
+			printf("%g ", *weight++);
+		}
+	}
 	printf("\n");
 }

@@ -67,6 +67,17 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 	net->activation = (char*)(net->output + net->nneurons);
 }
 
+static float *nn_ffnet_weight_at_hidden_layer(struct nn_ffnet *net,
+					      size_t layer)
+{
+	assert(net);
+	assert(layer < net->nhidden_layers);
+
+	size_t input_offset = (net->ninputs + 1) * net->nhiddens;
+
+	return net->weight + input_offset + (net->nhiddens + 1) * layer;
+}
+
 static size_t nn_ffnet_hidden_weights(size_t input_count,
 				      size_t hidden_count,
 				      size_t output_count,
@@ -234,31 +245,38 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 
 	/* WEIGHTS */
 	/* Copy the hidden and the input weights */
+	size_t noutput_weights = nn_ffnet_output_weights(new->ninputs,
+							 new->nhiddens,
+							 new->noutputs,
+							 new->nhidden_layers);
 	memcpy(new->weight,
 	       net->weight,
-	       sizeof(float) * (net->nweights - net->noutputs));
+	       sizeof(float) * (net->nweights - noutput_weights));
 
 	/* Copy the output weights */
-	memcpy(new->weight + new->nweights - new->noutputs,
-	       net->weight + net->nweights - net->noutputs,
-	       sizeof(float) * net->noutputs);
+	memcpy(new->weight + new->nweights - noutput_weights,
+	       net->weight + net->nweights - noutput_weights,
+	       sizeof(float) * noutput_weights);
 
 	/* Find where the location and amount of the new empty weights */
-	float *new_weight = new->weight + net->nweights - net->noutputs;
 	size_t nnew_weights = new->nweights - net->nweights;
 
 	/* Destroy the old one */
 	nn_ffnet_destroy(net);
 
-	size_t nweights_per_layer;
-	if(new->nhidden_layers == 1){
-		nweights_per_layer = new->ninputs + 1;
+	size_t nweights_per_layer = new->nhiddens + 1;
+	size_t new_layer = new->nhidden_layers - 1;
+	float *new_weight;
+	if(new_layer == 0){
+		new_weight = new->weight;
 	}else{
-		nweights_per_layer = new->nhiddens + 1;
+		new_weight = nn_ffnet_weight_at_hidden_layer(new,
+							     new_layer - 1);
 	}
 
 	/* Skip the bias */
-	//new_weight++;
+	new_weight++;
+
 	float *new_weight_finish = new_weight + nnew_weights;
 	/* Set each weight directly connected to the node before it */
 	do{

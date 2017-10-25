@@ -230,9 +230,21 @@ TEST nn_neuron_is_connected()
 
 TEST nn_add_layer_zero()
 {
+	struct nn_ffnet *net = nn_ffnet_create(1, 1, 1, 0);
+	ASSERT(net);
+
+	/* Biases will be 0.0 */
+	net->weight[1] = 1.0f;
+	net = nn_ffnet_add_hidden_layer(net, 2.0f);
+	ASSERT_EQ_FMT(0.0f, net->weight[0], "%g");
+	ASSERT_EQ_FMT(2.0f, net->weight[1], "%g");
+	ASSERT_EQ_FMT(0.0f, net->weight[2], "%g");
+	ASSERT_EQ_FMT(1.0f, net->weight[3], "%g");
+
+	nn_ffnet_destroy(net);
 	float inputs[] = {1.0f, 10.25f, 0.01f};
 
-	struct nn_ffnet *net = nn_ffnet_create(3, 3, 3, 0);
+	net = nn_ffnet_create(3, 3, 3, 0);
 	ASSERT(net);
 
 	net->weight[1] = 1.0f;
@@ -274,12 +286,12 @@ TEST nn_add_layer_single()
 	net->weight[1] = 1.0f;
 	net->weight[3] = 2.0f;
 
-	net = nn_ffnet_add_hidden_layer(net, 1.0f);
+	net = nn_ffnet_add_hidden_layer(net, 3.0f);
 
 	float *results = nn_ffnet_run(net, &input);
 	ASSERT(results);
 
-	ASSERT_EQ_FMT(2.0, results[0], "%g");
+	ASSERT_EQ_FMT(6.0, results[0], "%g");
 
 	nn_ffnet_destroy(net);
 	PASS();
