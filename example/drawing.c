@@ -10,15 +10,17 @@
 static struct neat_config config = {
 	.network_inputs = 2,
 	.network_outputs = 1,
-	.network_hidden_nodes = 2,
+	.network_hidden_nodes = 3,
 
 	.minimum_time_before_replacement = 10,
 
 	.population_size = POP_SIZE,
 
+	.speciate = true,
+
 	.species_crossover_probability = 0.2,
 	.interspecies_crossover_probability = 0.05,
-	.mutate_species_crossover_probability = 0.25,
+	.mutate_species_crossover_probability = 0.5,
 
 	.genome_add_neuron_mutation_probability = 0.1,
 	.genome_add_link_mutation_probability = 0.12,

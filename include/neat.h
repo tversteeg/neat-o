@@ -15,6 +15,7 @@ struct neat_config{
 	/* rtNEAT */
 	size_t population_size;
 	bool reset_on_extinction;
+	bool speciate;
 
 	size_t minimum_time_before_replacement;
 

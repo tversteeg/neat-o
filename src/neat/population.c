@@ -7,11 +7,10 @@ static void neat_reset_genomes(struct neat_pop *p)
 {
 	assert(p);
 
-	/* Create a base genome and copy it for every other one */
-	p->genomes[0] = neat_genome_create(p->conf, p->innovation++);
-
-	for(size_t i = 1; i < p->ngenomes; i++){
-		p->genomes[i] = neat_genome_copy(p->genomes[0]);
+	/* All the genomes will be random at start */
+	int innovation = p->innovation++;
+	for(size_t i = 0; i < p->ngenomes; i++){
+		p->genomes[i] = neat_genome_create(p->conf, innovation);
 	}
 }
 
@@ -47,6 +46,27 @@ static struct neat_species *neat_create_new_species(struct neat_pop *p,
 	p->species[p->nspecies - 1] = new;
 
 	return new;
+}
+
+static void neat_remove_species_if_empty(struct neat_pop *p, size_t species_id)
+{
+	assert(p);
+	assert(species_id < p->nspecies);
+
+	struct neat_species *s = p->species[species_id];
+
+	/* Only remove the species if there are no genomes left */
+	if(s->ngenomes > 0){
+		return;
+	}
+
+	neat_species_destroy(s);
+
+	/* Put the last species on this position
+	 * (this will do nothing if it already is the last one)
+	 */
+	p->species[species_id] = p->species[--p->nspecies];
+	p->species[p->nspecies] = NULL;
 }
 
 static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
@@ -225,7 +245,9 @@ static void neat_reproduce(struct neat_pop *p,
 
 		neat_crossover(p, s, worst_genome, genitor);
 
-		neat_speciate_genome(p, worst_genome);
+		if(p->conf.speciate){
+			neat_speciate_genome(p, worst_genome);
+		}
 
 		break;
 	}
@@ -311,7 +333,10 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 
 	/* Remove the worst genome from the species if it contains it */
 	for(size_t i = 0; i < p->nspecies; i++){
-		neat_species_remove_genome(p->species[i], worst_found_genome);
+		if(neat_species_remove_genome_if_exists(p->species[i],
+							worst_found_genome)){
+			neat_remove_species_if_empty(p, i);
+		}
 	}
 
 	neat_reproduce(p, worst_found_genome);

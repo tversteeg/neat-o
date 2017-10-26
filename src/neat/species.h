@@ -28,8 +28,8 @@ size_t neat_species_get_representant(struct neat_species *species);
 
 void neat_species_add_genome(struct neat_species *species,
 			     size_t genome_id);
-void neat_species_remove_genome(struct neat_species *species,
-				size_t genome_id);
+bool neat_species_remove_genome_if_exists(struct neat_species *species,
+					  size_t genome_id);
 bool neat_species_contains_genome(struct neat_species *species,
 				  size_t genome_id);
 

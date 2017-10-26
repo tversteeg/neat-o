@@ -76,11 +76,9 @@ size_t neat_species_get_representant(struct neat_species *species)
 	assert(species);
 	assert(species->ngenomes > 0);
 
-	//TODO track the representant, for now just return a random genome
+	/* The representant will be the first genome assigned to this species */
 
-	size_t index = rand() % species->ngenomes;
-
-	return species->genomes[index];
+	return species->genomes[0];
 }
 
 void neat_species_add_genome(struct neat_species *species,
@@ -99,13 +97,13 @@ void neat_species_add_genome(struct neat_species *species,
 	species->ngenomes++;
 }
 
-void neat_species_remove_genome(struct neat_species *species,
-				size_t genome_id)
+bool neat_species_remove_genome_if_exists(struct neat_species *species,
+					  size_t genome_id)
 {
 	assert(species);
 
 	if(genome_id >= species->ngenomes){
-		return;
+		return false;
 	}
 
 	for(size_t i = 0; i < species->ngenomes; i++){
@@ -119,8 +117,10 @@ void neat_species_remove_genome(struct neat_species *species,
 		species->genomes[i] = species->genomes[--species->ngenomes];
 		species->genomes[species->ngenomes] = SIZE_MAX;
 
-		break;
+		return true;
 	}
+
+	return false;
 }
 
 bool neat_species_contains_genome(struct neat_species *species,
