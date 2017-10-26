@@ -38,6 +38,8 @@ TEST neat_xor()
 
 		.population_size = 20,
 
+		.minimum_time_before_replacement = 1,
+
 		.species_crossover_probability = 0.2,
 		.interspecies_crossover_probability = 0.05,
 		.mutate_species_crossover_probability = 0.25,
@@ -45,11 +47,13 @@ TEST neat_xor()
 		.genome_add_neuron_mutation_probability = 0.5,
 		.genome_add_link_mutation_probability = 0.1,
 
-		.genome_minimum_ticks_alive = 100,
+		.genome_minimum_ticks_alive = 20,
 		.genome_compatibility_treshold = 0.2
 	};
 	neat_t neat = neat_create(config);
 	ASSERT(neat);
+
+	size_t mutations = 0;
 
 	/* Epochs */
 	for(int i = 0; i < 10000; i++){
@@ -83,15 +87,13 @@ TEST neat_xor()
 			neat_increase_time_alive(neat, j);
 		}
 
-		neat_epoch(neat);
-	}
-
-	/* Organisms */
-	for(int j = 0; j < config.population_size; j++){
-		neat_print_net(neat, j);
+		if(neat_epoch(neat, NULL)){
+			mutations++;
+		}
 	}
 
 	neat_destroy(neat);
+	printf("Mutations: %d\n", (int)mutations);
 	FAILm("A mutation that solved the xor problem did not occur");
 }
 

@@ -8,9 +8,15 @@
 typedef void* neat_t;
 
 struct neat_config{
-	/* NEAT */
+	/* Neural Networks */
+	size_t network_inputs, network_outputs;
+	size_t network_hidden_nodes;
+
+	/* rtNEAT */
 	size_t population_size;
 	bool reset_on_extinction;
+
+	size_t minimum_time_before_replacement;
 
 	/* Species Crossover */
 	float species_crossover_probability;
@@ -25,10 +31,6 @@ struct neat_config{
 	/* Genomes */
 	size_t genome_minimum_ticks_alive;
 	float genome_compatibility_treshold;
-
-	/* Neural Networks */
-	size_t network_inputs, network_outputs;
-	size_t network_hidden_nodes;
 };
 
 neat_t neat_create(struct neat_config config);

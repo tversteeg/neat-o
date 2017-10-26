@@ -17,4 +17,6 @@ struct neat_pop{
 	size_t nspecies;
 
 	int innovation;
+
+	size_t ticks;
 };

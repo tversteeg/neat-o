@@ -40,7 +40,7 @@ static struct neat_species *neat_create_new_species(struct neat_pop *p,
 
 	if(fill){
 		for(size_t i = 0; i < p->ngenomes; i++){
-			neat_species_add_genome(new, p->genomes[i]);
+			neat_species_add_genome(new, i);
 		}
 	}
 
@@ -78,7 +78,7 @@ static float neat_get_species_fitness_average(struct neat_pop *p)
 
 	float total_avg = 0.0;
 	for(size_t i = 0; i < p->nspecies; i++){
-		total_avg += neat_species_get_average_fitness(p->species[i]);
+		total_avg += neat_species_get_average_fitness(p, p->species[i]);
 	}
 	total_avg /= (double)p->nspecies;
 
@@ -97,19 +97,19 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 		if(p->species[i]->ngenomes == 0){
 			continue;
 		}
-		struct neat_genome *species_representant =
-			neat_species_get_representant(p->species[i]);
+		size_t id = neat_species_get_representant(p->species[i]);
+		struct neat_genome *species_representant = p->genomes[id];
 		if(neat_genome_is_compatible(genome,
 					     species_representant,
 					     compatibility_treshold)){
-			neat_species_add_genome(p->species[i], genome);
+			neat_species_add_genome(p->species[i], genome_id);
 			return;
 		}
 	}
 
 	/* If no matching species could be found create a new species */
 	struct neat_species *new = neat_create_new_species(p, false);
-	neat_species_add_genome(new, genome);
+	neat_species_add_genome(new, genome_id);
 }
 
 static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
@@ -127,16 +127,17 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 	   random < p->conf.interspecies_crossover_probability){
 		size_t species_index = rand() % p->nspecies;
 		struct neat_species *random_species = p->species[species_index];
+		assert(random_species);
 
 		/* We don't want to do interspecies crossover on the same
 		 * species
 		 */
 		if(random_species == s){
 			/* We can't move the index lower than 0 */
-			if(p->species[0] == random_species){
-				random_species++;
+			if(species_index == 0){
+				random_species = p->species[species_index + 1];
 			}else{
-				random_species--;
+				random_species = p->species[species_index - 1];
 			}
 		}
 
@@ -144,9 +145,9 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 			return NULL;
 		}
 
-		return neat_species_select_genitor(random_species);
+		return p->genomes[neat_species_select_genitor(random_species)];
 	}else{
-		return neat_species_select_genitor(s);
+		return p->genomes[neat_species_select_genitor(s)];
 	}
 }
 
@@ -179,6 +180,9 @@ static void neat_crossover(struct neat_pop *p,
 		neat_genome_mutate(child, p->conf, p->innovation);
 	}
 
+	/* Reset the time alive for the child */
+	child->time_alive = 0;
+
 	neat_replace_genome(p, worst_genome, child);
 	neat_genome_destroy(child);
 }
@@ -195,7 +199,7 @@ static void neat_reproduce(struct neat_pop *p,
 		struct neat_species *s = p->species[i];
 		assert(s->ngenomes > 0);
 
-		float avg = neat_species_get_average_fitness(s);
+		float avg = neat_species_get_average_fitness(p, s);
 		float selection_prob = avg / total_avg;
 
 		/* If we didn't find a match, 
@@ -210,7 +214,8 @@ static void neat_reproduce(struct neat_pop *p,
 		 * replacement if there is no crossover and a parent when 
 		 * there is
 		 */
-		struct neat_genome *genitor = neat_species_select_genitor(s);
+		size_t genitor_id = neat_species_select_genitor(s);
+		struct neat_genome *genitor = p->genomes[genitor_id];
 		/* Continue with finding proper species if the genitor could
 		 * not be found
 		 */
@@ -228,7 +233,11 @@ static void neat_reproduce(struct neat_pop *p,
 
 neat_t neat_create(struct neat_config config)
 {
+	assert(config.network_inputs > 0);
+	assert(config.network_outputs > 0);
+	assert(config.network_hidden_nodes > 0);
 	assert(config.population_size > 0);
+	assert(config.minimum_time_before_replacement > 0);
 
 	struct neat_pop *p = calloc(1, sizeof(struct neat_pop));
 	assert(p);
@@ -286,6 +295,13 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	struct neat_pop *p = population;
 	assert(p);
 
+	p->ticks++;
+
+	/* Wait for the set amount of ticks until a replacement occurs */
+	if(p->ticks % p->conf.minimum_time_before_replacement != 0){
+		return false;
+	}
+
 	p->innovation++;
 
 	size_t worst_found_genome = 0;
@@ -295,8 +311,7 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 
 	/* Remove the worst genome from the species if it contains it */
 	for(size_t i = 0; i < p->nspecies; i++){
-		neat_species_remove_genome(p->species[i],
-					   p->genomes[worst_found_genome]);
+		neat_species_remove_genome(p->species[i], worst_found_genome);
 	}
 
 	neat_reproduce(p, worst_found_genome);
@@ -341,10 +356,8 @@ size_t neat_get_species_id(neat_t population, size_t genome_id)
 	assert(p);
 	assert(genome_id < p->ngenomes);
 
-	struct neat_genome *genome = p->genomes[genome_id];
-
 	for(size_t i = 0; i < p->nspecies; i++){
-		if(neat_species_contains_genome(p->species[i], genome)){
+		if(neat_species_contains_genome(p->species[i], genome_id)){
 			return i;
 		}
 	}

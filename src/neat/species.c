@@ -1,6 +1,17 @@
 #include "species.h"
 
+#include <stdint.h>
 #include <assert.h>
+
+#include "population.h"
+
+static struct neat_genome *neat_genome_at(struct neat_pop *p, size_t index)
+{
+	assert(p);
+	assert(index < p->ngenomes);
+
+	return p->genomes[index];
+}
 
 struct neat_species *neat_species_create(struct neat_config config)
 {
@@ -10,8 +21,7 @@ struct neat_species *neat_species_create(struct neat_config config)
 	assert(species);
 
 	/* Create all the genomes but don't use them yet */
-	species->genomes = calloc(config.population_size,
-				  sizeof(struct neat_genome*));
+	species->genomes = calloc(config.population_size, sizeof(size_t));
 	assert(species->genomes);
 
 	return species;
@@ -35,7 +45,8 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 	return fitness / (float)species->ngenomes;
 }
 
-float neat_species_get_average_fitness(struct neat_species *species)
+float neat_species_get_average_fitness(struct neat_pop *p,
+				       struct neat_species *species)
 {
 	assert(species);
 
@@ -44,48 +55,61 @@ float neat_species_get_average_fitness(struct neat_species *species)
 		/* We can get the adjusted fitness for every node by dividing
 		 * them all but it's better to do one divide at the end
 		 */
-		sum_fitness += species->genomes[i]->fitness;
+		sum_fitness += neat_genome_at(p, i)->fitness;
 	}
 
 	return sum_fitness / (float)(species->ngenomes * 2);
 }
 
-struct neat_genome *neat_species_select_genitor(struct neat_species *species)
+size_t neat_species_select_genitor(struct neat_species *species)
 {
 	assert(species);
 	assert(species->ngenomes > 0);
 
-	return species->genomes[rand() % species->ngenomes];
+	size_t index = rand() % species->ngenomes;
+
+	return species->genomes[index];
 }
 
-struct neat_genome *neat_species_get_representant(struct neat_species *species)
+size_t neat_species_get_representant(struct neat_species *species)
 {
 	assert(species);
 	assert(species->ngenomes > 0);
 
 	//TODO track the representant, for now just return a random genome
 
-	return species->genomes[rand() % species->ngenomes];
+	size_t index = rand() % species->ngenomes;
+
+	return species->genomes[index];
 }
 
 void neat_species_add_genome(struct neat_species *species,
-			     struct neat_genome *genome)
+			     size_t genome_id)
 {
 	assert(species);
-	assert(genome);
 
-	species->genomes[species->ngenomes] = genome;
+	/* Check if the genome is already there */
+	for(size_t i = 0; i < species->ngenomes; i++){
+		if(species->genomes[i] == genome_id){
+			return;
+		}
+	}
+
+	species->genomes[species->ngenomes] = genome_id;
 	species->ngenomes++;
 }
 
 void neat_species_remove_genome(struct neat_species *species,
-				struct neat_genome *genome)
+				size_t genome_id)
 {
 	assert(species);
-	assert(genome);
+
+	if(genome_id >= species->ngenomes){
+		return;
+	}
 
 	for(size_t i = 0; i < species->ngenomes; i++){
-		if(species->genomes[i] != genome){
+		if(species->genomes[i] != genome_id){
 			continue;
 		}
 
@@ -93,20 +117,19 @@ void neat_species_remove_genome(struct neat_species *species,
 		 * (this will do nothing if it already is the last one)
 		 */
 		species->genomes[i] = species->genomes[--species->ngenomes];
-		species->genomes[species->ngenomes] = NULL;
+		species->genomes[species->ngenomes] = SIZE_MAX;
 
-		return;
+		break;
 	}
 }
 
 bool neat_species_contains_genome(struct neat_species *species,
-				  struct neat_genome *genome)
+				  size_t genome_id)
 {
 	assert(species);
-	assert(genome);
 
 	for(size_t i = 0; i < species->ngenomes; i++){
-		if(species->genomes[i] == genome){
+		if(species->genomes[i] == genome_id){
 			return true;
 		}
 	}

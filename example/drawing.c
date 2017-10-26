@@ -5,12 +5,14 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 12
+#define POP_SIZE 100
 
 static struct neat_config config = {
 	.network_inputs = 2,
 	.network_outputs = 1,
 	.network_hidden_nodes = 2,
+
+	.minimum_time_before_replacement = 10,
 
 	.population_size = POP_SIZE,
 
@@ -18,9 +20,9 @@ static struct neat_config config = {
 	.interspecies_crossover_probability = 0.05,
 	.mutate_species_crossover_probability = 0.25,
 
-	.genome_add_neuron_mutation_probability = 0.03,
-	.genome_add_link_mutation_probability = 0.06,
-	.genome_weight_mutation_probability = 0.09,
+	.genome_add_neuron_mutation_probability = 0.1,
+	.genome_add_link_mutation_probability = 0.12,
+	.genome_weight_mutation_probability = 0.5,
 	.genome_all_weights_mutation_probability = 0.21,
 
 	.genome_minimum_ticks_alive = 100,

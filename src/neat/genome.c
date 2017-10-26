@@ -24,7 +24,8 @@ static void neat_genome_zeroify_innovations(struct neat_genome *genome)
 	}
 }
 
-static size_t neat_genome_allocate_innovations(struct neat_genome *genome)
+static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
+					       int innovation)
 {
 	assert(genome);
 	assert(genome->net);
@@ -34,16 +35,23 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome)
 	genome->innovations = realloc(genome->innovations, bytes);
 	assert(genome->innovations);
 
+	size_t diff = genome->net->nweights - genome->ninnovations;
+	int *innov = genome->innovations + genome->ninnovations;
+	for(size_t i = 0; i < diff; i++){
+		*innov++ = innovation;
+	}
+
+	genome->ninnovations = genome->net->nweights;
+
 	return bytes;
 }
 
-static void neat_genome_add_layer(struct neat_genome *genome)
+static void neat_genome_add_layer(struct neat_genome *genome, int innovation)
 {
 	float weight = (float)rand() / (float)(RAND_MAX / 4.0f) - 2.0f;
 	genome->net = nn_ffnet_add_hidden_layer(genome->net, weight);
 
-	neat_genome_allocate_innovations(genome);
-
+	neat_genome_allocate_innovations(genome, innovation);
 	neat_genome_zeroify_innovations(genome);
 }
 
@@ -77,7 +85,7 @@ static void neat_genome_add_neuron(struct neat_genome *genome, int innovation)
 	/* Add + 1 to the selection of the layer so a new one can be created */
 	size_t layer = rand() % (n->nhidden_layers) + 1;
 	if(layer >= n->nhidden_layers){
-		neat_genome_add_layer(genome);
+		neat_genome_add_layer(genome, innovation);
 		return;
 	}
 
@@ -141,6 +149,9 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 				       int innovation)
 {
 	assert(innovation > 0);
+	assert(config.network_inputs > 0);
+	assert(config.network_hidden_nodes > 0);
+	assert(config.network_outputs > 0);
 
 	struct neat_genome *genome = calloc(1, sizeof(struct neat_genome));
 	assert(genome);
@@ -149,6 +160,7 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 				      config.network_hidden_nodes,
 				      config.network_outputs,
 				      1);
+	assert(genome->net);
 
 	nn_ffnet_set_activations(genome->net,
 				 NN_ACTIVATION_RELU,
@@ -156,11 +168,11 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 
 	nn_ffnet_randomize(genome->net);
 
-	genome->innovations = NULL;
-	neat_genome_allocate_innovations(genome);
+	neat_genome_allocate_innovations(genome, innovation);
 	for(size_t i = 0; i < genome->net->nweights; i++){
 		genome->innovations[i] = innovation;
 	}
+	neat_genome_zeroify_innovations(genome);
 
 	return genome;
 }
@@ -176,7 +188,7 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	assert(new->net);
 
 	new->innovations = NULL;
-	size_t bytes = neat_genome_allocate_innovations(new);
+	size_t bytes = neat_genome_allocate_innovations(new, 1);
 	memcpy(new->innovations, genome->innovations, bytes);
 	assert(new->innovations);
 
@@ -284,8 +296,8 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 	assert(genome->innovations);
 	assert(other->innovations);
 
-	size_t weights1 = genome->net->nweights;
-	size_t weights2 = other->net->nweights;
+	size_t weights1 = genome->ninnovations;
+	size_t weights2 = other->ninnovations;
 	size_t min_weights;
 	size_t max_weights;
 	if(weights1 < weights2){
