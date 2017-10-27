@@ -13,6 +13,10 @@ all: $(NAME)
 $(NAME): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
+.PHONY: test
+test: $(NAME)
+	$(NAME)
+
 .PHONY: clean
 clean:
 	$(RM) $(OBJS) $(NAME)
