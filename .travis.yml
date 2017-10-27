@@ -3,13 +3,12 @@ language: c
 compiler:
   - clang
   - gcc
-  
-  os:
-  - linux
-  
+
+os: linux
+
 addons:
   apt:
-    packages:
+    sources:
     - libgtk-3-dev
     - libcairo2-dev
   
