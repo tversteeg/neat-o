@@ -1,7 +1,7 @@
 NAME=neat-test
 
 RM=rm -rf
-CFLAGS=-g -Wall -Werror -pedantic -O3 -I../include
+CFLAGS=-g -Wall -Wextra -Werror -std=c90 -ansi -pedantic -O3 -I../include
 LDLIBS=-fopenmp -lm
 
 SRCS=test.c ../src/nn/nn.c \
@@ -15,7 +15,7 @@ $(NAME): $(OBJS)
 
 .PHONY: test
 test: $(NAME)
-	$(NAME)
+	./$(NAME)
 
 .PHONY: clean
 clean:

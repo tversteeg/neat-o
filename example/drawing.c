@@ -204,7 +204,11 @@ static void draw_neat_network(cairo_t *cr,
 	guint starty = y;
 
 	/* Draw weights */
-	for(size_t i = 0; i < n->nhiddens; i++){
+	size_t layer_count = n->nhiddens;
+	if(n->nhidden_layers == 0){
+		layer_count = n->noutputs;
+	}
+	for(size_t i = 0; i < layer_count; i++){
 		for(size_t j = 0; j < n->ninputs + 1; j++){
 			draw_weight(cr,
 				    x,
@@ -215,7 +219,7 @@ static void draw_neat_network(cairo_t *cr,
 		}
 	}
 	for(size_t i = 0; i < n->nhidden_layers; i++){
-		size_t layer_count = n->nhiddens;
+		layer_count = n->nhiddens;
 		if(i == n->nhidden_layers - 1){
 			layer_count = n->noutputs;
 		}

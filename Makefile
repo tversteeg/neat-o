@@ -1,7 +1,7 @@
 all: build
 
 .PHONY: build
-example:
+build:
 	$(MAKE) -C example
 	$(MAKE) -C test
 

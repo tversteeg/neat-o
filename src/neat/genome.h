@@ -12,7 +12,7 @@ struct neat_genome{
 	size_t used_weights;
 
 	float fitness;
-	int time_alive;
+	size_t time_alive;
 };
 
 struct neat_genome *neat_genome_create(struct neat_config config,

@@ -15,9 +15,11 @@ static struct neat_genome *neat_genome_at(struct neat_pop *p, size_t index)
 
 struct neat_species *neat_species_create(struct neat_config config)
 {
+	struct neat_species *species;
+
 	assert(config.population_size > 0);
 
-	struct neat_species *species = calloc(1, sizeof(struct neat_species));
+	species = calloc(1, sizeof(struct neat_species));
 	assert(species);
 
 	/* Create all the genomes but don't use them yet */
@@ -48,10 +50,13 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 float neat_species_get_average_fitness(struct neat_pop *p,
 				       struct neat_species *species)
 {
+	float sum_fitness;
+	size_t i;
+
 	assert(species);
 
-	float sum_fitness = 0.0f;
-	for(size_t i = 0; i < species->ngenomes; i++){
+	sum_fitness = 0.0f;
+	for(i = 0; i < species->ngenomes; i++){
 		/* We can get the adjusted fitness for every node by dividing
 		 * them all but it's better to do one divide at the end
 		 */
@@ -63,10 +68,12 @@ float neat_species_get_average_fitness(struct neat_pop *p,
 
 size_t neat_species_select_genitor(struct neat_species *species)
 {
+	size_t index;
+
 	assert(species);
 	assert(species->ngenomes > 0);
 
-	size_t index = rand() % species->ngenomes;
+	index = rand() % species->ngenomes;
 
 	return species->genomes[index];
 }
@@ -84,10 +91,12 @@ size_t neat_species_get_representant(struct neat_species *species)
 void neat_species_add_genome(struct neat_species *species,
 			     size_t genome_id)
 {
+	size_t i;
+
 	assert(species);
 
 	/* Check if the genome is already there */
-	for(size_t i = 0; i < species->ngenomes; i++){
+	for(i = 0; i < species->ngenomes; i++){
 		if(species->genomes[i] == genome_id){
 			return;
 		}
@@ -100,13 +109,15 @@ void neat_species_add_genome(struct neat_species *species,
 bool neat_species_remove_genome_if_exists(struct neat_species *species,
 					  size_t genome_id)
 {
+	size_t i;
+
 	assert(species);
 
 	if(genome_id >= species->ngenomes){
 		return false;
 	}
 
-	for(size_t i = 0; i < species->ngenomes; i++){
+	for(i = 0; i < species->ngenomes; i++){
 		if(species->genomes[i] != genome_id){
 			continue;
 		}
@@ -126,9 +137,11 @@ bool neat_species_remove_genome_if_exists(struct neat_species *species,
 bool neat_species_contains_genome(struct neat_species *species,
 				  size_t genome_id)
 {
+	size_t i;
+
 	assert(species);
 
-	for(size_t i = 0; i < species->ngenomes; i++){
+	for(i = 0; i < species->ngenomes; i++){
 		if(species->genomes[i] == genome_id){
 			return true;
 		}
