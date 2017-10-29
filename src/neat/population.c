@@ -68,8 +68,6 @@ static void neat_remove_species_if_empty(struct neat_pop *p, size_t species_id)
 		return;
 	}
 
-	printf("Remove\n");
-
 	neat_species_destroy(s);
 
 	/* Put the last species on this position
@@ -84,16 +82,36 @@ static void neat_remove_genome_from_species(struct neat_pop *p,
 {
 	size_t i;
 
-	printf("Species: %d - ", (int)p->nspecies);
-
 	for(i = 0; i < p->nspecies; i++){
 		if(neat_species_remove_genome_if_exists(p->species[i],
 							genome_id)){
 			neat_remove_species_if_empty(p, i);
 		}
 	}
+}
 
-	printf("%d\n", (int)p->nspecies);
+static int neat_sort_species_compare(const void *a, const void *b)
+{
+	float s1_fitness, s2_fitness;
+	struct neat_species *s1, *s2;
+		
+	s1 = *(struct neat_species**)a;
+	s2 = *(struct neat_species**)b;
+
+	assert(s1);
+	assert(s2);
+
+	s1_fitness = s1->avg_fitness;
+	s2_fitness = s2->avg_fitness;
+
+	/* Sort from low to high */
+	if(s1_fitness < s2_fitness){
+		return -1;
+	}else if(s1_fitness > s2_fitness){
+		return 1;
+	}else{
+		return 0;
+	}
 }
 
 static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
@@ -135,11 +153,22 @@ static float neat_get_total_fitness_average(struct neat_pop *p)
 
 	total_avg = 0.0;
 	for(i = 0; i < p->nspecies; i++){
-		total_avg += neat_species_get_average_fitness(p, p->species[i]);
+		total_avg += p->species[i]->avg_fitness;
 	}
 	total_avg /= (double)p->nspecies;
 
 	return total_avg;
+}
+
+static void neat_update_all_species_averages(struct neat_pop *p)
+{
+	size_t i;
+
+	assert(p);
+
+	for(i = 0; i < p->nspecies; i++){
+		neat_species_update_average_fitness(p, p->species[i]);
+	}
 }
 
 static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
@@ -269,6 +298,14 @@ static void neat_reproduce(struct neat_pop *p,
 
 	assert(p);
 
+	neat_update_all_species_averages(p);
+
+	/* Sort species on fitness */
+	qsort(p->species,
+	      p->nspecies,
+	      sizeof(struct neat_species*),
+	      neat_sort_species_compare);
+
 	total_avg = neat_get_total_fitness_average(p);
 
 	selection_random = (float)rand() / (float)RAND_MAX;
@@ -276,14 +313,13 @@ static void neat_reproduce(struct neat_pop *p,
 	for(i = 0; i < p->nspecies; i++){
 		struct neat_species *s;
 		struct neat_genome *genitor;
-		float avg, selection_prob;
+		float selection_prob;
 		size_t genitor_id;
 
 		s = p->species[i];
 		assert(s->ngenomes > 0);
 
-		avg = neat_species_get_average_fitness(p, s);
-		selection_prob = avg / total_avg;
+		selection_prob = s->avg_fitness / total_avg;
 
 		/* If we didn't find a match, 
 		 * reduce the chance to find a new one
@@ -293,7 +329,7 @@ static void neat_reproduce(struct neat_pop *p,
 			continue;
 		}
 
-		printf("%d\n", (int)i);
+		printf("%d %g\n", (int)i, selection_prob);
 
 		/* Select a random genome from the species, this will be the
 		 * replacement if there is no crossover and a parent when 
@@ -310,10 +346,8 @@ static void neat_reproduce(struct neat_pop *p,
 
 		neat_crossover(p, s, worst_genome, genitor);
 
-		if(p->conf.speciate){
-			/* First remove the genome from all the species */
-			neat_speciate_genome(p, worst_genome);
-		}
+		/* First remove the genome from all the species */
+		neat_speciate_genome(p, worst_genome);
 
 		break;
 	}

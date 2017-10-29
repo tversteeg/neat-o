@@ -19,6 +19,7 @@ TEST neat_create_and_destroy(void)
 	struct neat_config config;
 	neat_t neat;
 
+	config = NEAT_DEFAULT_CONFIG;
 	config.network_inputs = 1;
 	config.network_outputs = 1;
 	config.network_hidden_nodes = 1;
@@ -39,23 +40,14 @@ TEST neat_xor(void)
 	size_t i;
 	size_t mutations;
 
+	config = NEAT_DEFAULT_CONFIG;
 	config.network_inputs = 2;
 	config.network_outputs = 1;
 	config.network_hidden_nodes = 16;
 
-	config.population_size = 20;
-
+	config.population_size = 100;
 	config.minimum_time_before_replacement = 1;
-
-	config.species_crossover_probability = 0.2;
-	config.interspecies_crossover_probability = 0.05;
-	config.mutate_species_crossover_probability = 0.25;
-
-	config.genome_add_neuron_mutation_probability = 0.5;
-	config.genome_add_link_mutation_probability = 0.1;
-
 	config.genome_minimum_ticks_alive = 20;
-	config.genome_compatibility_treshold = 0.2;
 
 	neat = neat_create(config);
 	ASSERT(neat);

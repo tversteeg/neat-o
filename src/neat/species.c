@@ -47,8 +47,8 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 	return fitness / (float)species->ngenomes;
 }
 
-float neat_species_get_average_fitness(struct neat_pop *p,
-				       struct neat_species *species)
+float neat_species_update_average_fitness(struct neat_pop *p,
+					  struct neat_species *species)
 {
 	float sum_fitness;
 	size_t i;
@@ -61,7 +61,9 @@ float neat_species_get_average_fitness(struct neat_pop *p,
 		sum_fitness += neat_genome_at(p, i)->fitness;
 	}
 
-	return sum_fitness / (float)species->ngenomes;
+	species->avg_fitness = sum_fitness / (float)species->ngenomes;
+
+	return species->avg_fitness;
 }
 
 size_t neat_species_select_genitor(struct neat_species *species)
@@ -110,10 +112,6 @@ bool neat_species_remove_genome_if_exists(struct neat_species *species,
 	size_t i;
 
 	assert(species);
-
-	if(genome_id >= species->ngenomes){
-		return false;
-	}
 
 	for(i = 0; i < species->ngenomes; i++){
 		if(species->genomes[i] != genome_id){

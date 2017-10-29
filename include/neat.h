@@ -14,8 +14,6 @@ struct neat_config{
 
 	/* rtNEAT */
 	size_t population_size;
-	bool reset_on_extinction;
-	bool speciate;
 
 	size_t minimum_time_before_replacement;
 
@@ -32,6 +30,35 @@ struct neat_config{
 	/* Genomes */
 	size_t genome_minimum_ticks_alive;
 	float genome_compatibility_treshold;
+} NEAT_DEFAULT_CONFIG = {
+	/* These variables need to be set because they are specific for each
+	 * implementation
+	 */
+	0, 0, 0, 0,
+
+	/* Minimum time before replacement */
+	20,
+
+	/* Species crossover probability */
+	0.2,
+	/* Interspecies crossover probability */
+	0.05,
+	/* Mutate species crossover probability */
+	0.3,
+	
+	/* Genome add neuron mutation probability */
+	0.1,
+	/* Genome add link mutation probability */
+	0.12,
+	/* Genome weight mutation probability */
+	0.3,
+	/* Genome mutate all weights probability */
+	0.21,
+
+	/* Genome minimum ticks alive */
+	100,
+	/* Genome compatibility treshold */
+	0.2
 };
 
 neat_t neat_create(struct neat_config config);

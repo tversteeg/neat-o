@@ -281,6 +281,8 @@ static void clear()
 
 static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 {
+	char frame_text[256];
+
 	cairo_set_line_width(cr, 2.0);
 
 	GtkStyleContext *context = gtk_widget_get_style_context(widget);
@@ -296,7 +298,6 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 	cairo_set_font_size(cr, 13);
 	cairo_move_to(cr, 3, 13);
-	char frame_text[256];
 	snprintf(frame_text, 256, "Frame: %d", (int)frame);
 	cairo_show_text(cr, frame_text); 
 	cairo_stroke(cr);

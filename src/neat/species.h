@@ -10,6 +10,8 @@ struct neat_pop;
 struct neat_species{
 	bool active;
 
+	float avg_fitness;
+
 	size_t *genomes;
 	size_t ngenomes;
 };
@@ -19,8 +21,8 @@ void neat_species_destroy(struct neat_species *species);
 
 float neat_species_get_adjusted_fitness(struct neat_species *species,
 					float fitness);
-float neat_species_get_average_fitness(struct neat_pop *p,
-				       struct neat_species *species);
+float neat_species_update_average_fitness(struct neat_pop *p,
+					  struct neat_species *species);
 
 size_t neat_species_select_genitor(struct neat_species *species);
 
