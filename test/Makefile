@@ -9,7 +9,7 @@ OBJS=$(SRCS:.c=.o)
 
 all: $(NAME)
 
-$(NAME): $(OBJS)
+$(NAME): $(OBJS) ${LIB}
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 .PHONY: test

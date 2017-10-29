@@ -13,7 +13,7 @@ const struct neat_config NEAT_DEFAULT_CONFIG = {
 	20,
 
 	/* Species crossover probability */
-	0.2,
+	0.03,
 	/* Interspecies crossover probability */
 	0.05,
 	/* Mutate species crossover probability */
@@ -23,6 +23,8 @@ const struct neat_config NEAT_DEFAULT_CONFIG = {
 	0.1,
 	/* Genome add link mutation probability */
 	0.12,
+	/* Genome change activation probability */
+	0.01,
 	/* Genome weight mutation probability */
 	0.3,
 	/* Genome mutate all weights probability */
@@ -145,7 +147,7 @@ static int neat_sort_species_compare(const void *a, const void *b)
 	}
 }
 
-static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
+static bool neat_find_worst_genome(struct neat_pop *p, size_t *worst_genome)
 {
 	bool found_worst;
 	float worst_fitness;
@@ -468,7 +470,7 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	p->innovation++;
 
 	worst_found_genome = 0;
-	if(!neat_find_worst_fitness(p, &worst_found_genome)){
+	if(!neat_find_worst_genome(p, &worst_found_genome)){
 		return false;
 	}
 

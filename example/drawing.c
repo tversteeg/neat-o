@@ -6,29 +6,9 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 12
+#define POP_SIZE 100
 
-static struct neat_config config = {
-	.network_inputs = 2,
-	.network_outputs = 1,
-	.network_hidden_nodes = 3,
-
-	.minimum_time_before_replacement = 10,
-
-	.population_size = POP_SIZE,
-
-	.species_crossover_probability = 0.2,
-	.interspecies_crossover_probability = 0.05,
-	.mutate_species_crossover_probability = 0.5,
-
-	.genome_add_neuron_mutation_probability = 0.1,
-	.genome_add_link_mutation_probability = 0.12,
-	.genome_weight_mutation_probability = 0.5,
-	.genome_all_weights_mutation_probability = 0.21,
-
-	.genome_minimum_ticks_alive = 100,
-	.genome_compatibility_treshold = 0.2
-};
+static struct neat_config config;
 
 static neat_t neat = NULL;
 
@@ -44,7 +24,7 @@ static float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 static guint thread;
 static cairo_surface_t *surface = NULL;
 
-static float errors[POP_SIZE];
+static float fitnesses[POP_SIZE];
 static size_t frame = 0;
 static size_t worst = SIZE_MAX;
 static guint renderx = 1;
@@ -67,8 +47,8 @@ static gboolean tick(gpointer data)
 			error += fabs(results[0] - xor_outputs[k]);
 		}
 
-		errors[i] = error;
 		float fitness = (4.0 - error) / 4.0;
+		fitnesses[i] = fitness;
 		neat_set_fitness(neat, i, fitness * fitness);
 
 		neat_increase_time_alive(neat, i);
@@ -186,9 +166,9 @@ static void draw_neat_network(cairo_t *cr,
 	char text[256];
 	snprintf(text,
 		 256,
-		 "Species: %d, err: %g",
+		 "Species: %d, fitness: %g",
 		 (int)species,
-		 errors[network]);
+		 fitnesses[network]);
 	cairo_show_text(cr, text); 
 	cairo_stroke(cr);
 
@@ -436,7 +416,15 @@ static void activate(GtkApplication *app, gpointer user_data)
 }
 
 int main(int argc, char *argv[])
-{	
+{
+	config = NEAT_DEFAULT_CONFIG;
+	config.network_inputs = 2;
+	config.network_outputs = 1;
+	config.network_hidden_nodes = 3;
+	config.population_size = POP_SIZE;
+	config.minimum_time_before_replacement = 10;
+	config.genome_minimum_ticks_alive = 1000;
+
 	srand(time(NULL));
 
 	GtkApplication *app = gtk_application_new("org.tversteeg.neatc",

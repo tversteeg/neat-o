@@ -32,6 +32,8 @@ struct neat_config{
 	float genome_add_neuron_mutation_probability;
 	/* Default 0.12 */
 	float genome_add_link_mutation_probability;
+	/* Default 0.01 */
+	float genome_change_activation_probability;
 	/* Default 0.3 */
 	float genome_weight_mutation_probability;
 	/* Default 0.21 */
