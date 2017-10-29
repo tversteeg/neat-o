@@ -1,18 +1,16 @@
 NAME=neat-test
 
-RM=rm -rf
 CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
        -std=c90 -ansi -pedantic -O3 -I../include
-LDLIBS=-lm
+LDLIBS=-lm -L. ${LIB}
 
-SRCS=test.c ../src/nn/nn.c \
-     ../src/neat/population.c ../src/neat/species.c ../src/neat/genome.c
+SRCS=test.c
 OBJS=$(SRCS:.c=.o)
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 .PHONY: test
 test: $(NAME)

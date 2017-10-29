@@ -3,6 +3,37 @@
 #include <float.h>
 #include <assert.h>
 
+const struct neat_config NEAT_DEFAULT_CONFIG = {
+	/* These variables need to be set because they are specific for each
+	 * implementation
+	 */
+	0, 0, 0, 0,
+
+	/* Minimum time before replacement */
+	20,
+
+	/* Species crossover probability */
+	0.2,
+	/* Interspecies crossover probability */
+	0.05,
+	/* Mutate species crossover probability */
+	0.3,
+	
+	/* Genome add neuron mutation probability */
+	0.1,
+	/* Genome add link mutation probability */
+	0.12,
+	/* Genome weight mutation probability */
+	0.3,
+	/* Genome mutate all weights probability */
+	0.21,
+
+	/* Genome minimum ticks alive */
+	100,
+	/* Genome compatibility treshold */
+	0.2
+};
+
 static void neat_reset_genomes(struct neat_pop *p)
 {
 	size_t innovation;

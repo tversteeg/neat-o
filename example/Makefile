@@ -1,19 +1,18 @@
 NAME=neat-drawing
 
-RM=rm -rf
-CFLAGS=-g -Wall -Wextra -pedantic -O1 -I../include \
+CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
+       -std=c99 -pedantic -O3 -I../include \
        `pkg-config --cflags gtk+-3.0`
-LDLIBS=-lm \
+LDLIBS=-lm -L. ${LIB}\
        `pkg-config --libs gtk+-3.0`
 
-SRCS=drawing.c ../src/nn/nn.c \
-     ../src/neat/population.c ../src/neat/species.c ../src/neat/genome.c
+SRCS=drawing.c
 OBJS=$(SRCS:.c=.o)
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 .PHONY: clean
 clean:

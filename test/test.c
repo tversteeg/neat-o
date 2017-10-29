@@ -85,7 +85,7 @@ TEST neat_xor(void)
 				PASSm(message);
 			}
 
-			fitness = 4.0 - error;
+			fitness = (4.0 - error) / 4.0;
 			neat_set_fitness(neat, j, fitness * fitness);
 
 			neat_increase_time_alive(neat, j);

@@ -5,7 +5,7 @@
 #include <math.h>
 #include <assert.h>
 
-static float neat_random_two()
+static float neat_random_two(void)
 {
 	return (float)rand() / (float)(RAND_MAX / 4.0f) - 2.0f;
 }

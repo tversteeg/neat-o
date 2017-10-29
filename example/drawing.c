@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdint.h>
 #include <math.h>
 
 #include <gtk/gtk.h>
@@ -15,8 +16,6 @@ static struct neat_config config = {
 	.minimum_time_before_replacement = 10,
 
 	.population_size = POP_SIZE,
-
-	.speciate = true,
 
 	.species_crossover_probability = 0.2,
 	.interspecies_crossover_probability = 0.05,
@@ -47,12 +46,12 @@ static cairo_surface_t *surface = NULL;
 
 static float errors[POP_SIZE];
 static size_t frame = 0;
-static size_t worst = SSIZE_MAX;
+static size_t worst = SIZE_MAX;
 static guint renderx = 1;
 static guint rendery = 1;
 static guint rendertick = 0;
 
-static void setup_neat()
+static void setup_neat(void)
 {
 	neat = neat_create(config);
 	assert(neat);
@@ -166,6 +165,8 @@ static void draw_neat_network(cairo_t *cr,
 			      guint width,
 			      guint height)
 {
+	(void)context;
+
 	int radius = MIN(width, height) / 20;
 	int xoffset = width / 10, yoffset = height / 20;
 
@@ -269,7 +270,7 @@ static void draw_neat_network(cairo_t *cr,
 	}
 }
 
-static void clear()
+static void clear(void)
 {
 	cairo_t *cr = cairo_create(surface);
 
@@ -281,6 +282,8 @@ static void clear()
 
 static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 {
+	(void)data;
+
 	char frame_text[256];
 
 	cairo_set_line_width(cr, 2.0);
@@ -323,8 +326,11 @@ static gboolean configure(GtkWidget *widget,
 			  GdkEventConfigure *event,
 			  gpointer data)
 {
+	(void)event;
+	(void)data;
+
 	if (surface){
-		cairo_surface_destroy (surface);
+		cairo_surface_destroy(surface);
 	}
 
 	GdkWindow *window = gtk_widget_get_window(widget);
@@ -340,7 +346,7 @@ static gboolean configure(GtkWidget *widget,
 	return TRUE;
 }
 
-static void close_window()
+static void close_window(void)
 {
 	g_source_remove(thread);
 
@@ -351,6 +357,8 @@ static void close_window()
 
 static gboolean change_render_x(GtkSpinButton *spin, gpointer data)
 {
+	(void)data;
+
 	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
 	int new = (int)gtk_adjustment_get_value(adjustment);
 	if(new * rendery <= POP_SIZE){
@@ -364,6 +372,8 @@ static gboolean change_render_x(GtkSpinButton *spin, gpointer data)
 
 static gboolean change_render_y(GtkSpinButton *spin, gpointer data)
 {
+	(void)data;
+
 	GtkAdjustment *adjustment = gtk_spin_button_get_adjustment(spin);
 	int new = (int)gtk_adjustment_get_value(adjustment);
 	if(new * renderx <= POP_SIZE){
@@ -377,6 +387,8 @@ static gboolean change_render_y(GtkSpinButton *spin, gpointer data)
 
 static void activate(GtkApplication *app, gpointer user_data)
 {
+	(void)user_data;
+
 	GtkWidget *window = gtk_application_window_new(app);
 	gtk_window_set_title(GTK_WINDOW(window), "neat-o: drawing");
 	gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);

@@ -9,57 +9,42 @@ typedef void* neat_t;
 
 struct neat_config{
 	/* Neural Networks */
-	size_t network_inputs, network_outputs;
-	size_t network_hidden_nodes;
+	/* No default */
+	size_t network_inputs, network_outputs, network_hidden_nodes;
 
 	/* rtNEAT */
+	/* No default */
 	size_t population_size;
 
+	/* Default 20 */
 	size_t minimum_time_before_replacement;
 
 	/* Species Crossover */
+	/* Default 0.2 */
 	float species_crossover_probability;
+	/* Default 0.05 */
 	float interspecies_crossover_probability;
+	/* Default 0.3 */
 	float mutate_species_crossover_probability;
+
 	/* Genome Mutation */
+	/* Default 0.1 */
 	float genome_add_neuron_mutation_probability;
+	/* Default 0.12 */
 	float genome_add_link_mutation_probability;
+	/* Default 0.3 */
 	float genome_weight_mutation_probability;
+	/* Default 0.21 */
 	float genome_all_weights_mutation_probability;
 
 	/* Genomes */
+	/* Default 100 */
 	size_t genome_minimum_ticks_alive;
+	/* Default 0.2 */
 	float genome_compatibility_treshold;
-} NEAT_DEFAULT_CONFIG = {
-	/* These variables need to be set because they are specific for each
-	 * implementation
-	 */
-	0, 0, 0, 0,
-
-	/* Minimum time before replacement */
-	20,
-
-	/* Species crossover probability */
-	0.2,
-	/* Interspecies crossover probability */
-	0.05,
-	/* Mutate species crossover probability */
-	0.3,
-	
-	/* Genome add neuron mutation probability */
-	0.1,
-	/* Genome add link mutation probability */
-	0.12,
-	/* Genome weight mutation probability */
-	0.3,
-	/* Genome mutate all weights probability */
-	0.21,
-
-	/* Genome minimum ticks alive */
-	100,
-	/* Genome compatibility treshold */
-	0.2
 };
+
+extern const struct neat_config NEAT_DEFAULT_CONFIG;
 
 neat_t neat_create(struct neat_config config);
 void neat_destroy(neat_t population);
