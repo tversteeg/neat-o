@@ -53,17 +53,15 @@ float neat_species_get_average_fitness(struct neat_pop *p,
 	float sum_fitness;
 	size_t i;
 
+	assert(p);
 	assert(species);
 
 	sum_fitness = 0.0f;
 	for(i = 0; i < species->ngenomes; i++){
-		/* We can get the adjusted fitness for every node by dividing
-		 * them all but it's better to do one divide at the end
-		 */
 		sum_fitness += neat_genome_at(p, i)->fitness;
 	}
 
-	return sum_fitness / (float)(species->ngenomes * 2);
+	return sum_fitness / (float)species->ngenomes;
 }
 
 size_t neat_species_select_genitor(struct neat_species *species)

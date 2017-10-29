@@ -5,7 +5,7 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 100
+#define POP_SIZE 12
 
 static struct neat_config config = {
 	.network_inputs = 2,
@@ -69,7 +69,7 @@ static gboolean tick(gpointer data)
 		}
 
 		errors[i] = error;
-		float fitness = 4.0 - error;
+		float fitness = (4.0 - error) / 4.0;
 		neat_set_fitness(neat, i, fitness * fitness);
 
 		neat_increase_time_alive(neat, i);

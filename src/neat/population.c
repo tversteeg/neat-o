@@ -68,6 +68,8 @@ static void neat_remove_species_if_empty(struct neat_pop *p, size_t species_id)
 		return;
 	}
 
+	printf("Remove\n");
+
 	neat_species_destroy(s);
 
 	/* Put the last species on this position
@@ -75,6 +77,23 @@ static void neat_remove_species_if_empty(struct neat_pop *p, size_t species_id)
 	 */
 	p->species[species_id] = p->species[--p->nspecies];
 	p->species[p->nspecies] = NULL;
+}
+
+static void neat_remove_genome_from_species(struct neat_pop *p,
+					    size_t genome_id)
+{
+	size_t i;
+
+	printf("Species: %d - ", (int)p->nspecies);
+
+	for(i = 0; i < p->nspecies; i++){
+		if(neat_species_remove_genome_if_exists(p->species[i],
+							genome_id)){
+			neat_remove_species_if_empty(p, i);
+		}
+	}
+
+	printf("%d\n", (int)p->nspecies);
 }
 
 static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
@@ -107,7 +126,7 @@ static bool neat_find_worst_fitness(struct neat_pop *p, size_t *worst_genome)
 	return found_worst;
 }
 
-static float neat_get_species_fitness_average(struct neat_pop *p)
+static float neat_get_total_fitness_average(struct neat_pop *p)
 {
 	float total_avg;
 	size_t i;
@@ -250,9 +269,10 @@ static void neat_reproduce(struct neat_pop *p,
 
 	assert(p);
 
-	total_avg = neat_get_species_fitness_average(p);
+	total_avg = neat_get_total_fitness_average(p);
 
 	selection_random = (float)rand() / (float)RAND_MAX;
+	printf("Total average: %g, ", total_avg);
 	for(i = 0; i < p->nspecies; i++){
 		struct neat_species *s;
 		struct neat_genome *genitor;
@@ -273,6 +293,8 @@ static void neat_reproduce(struct neat_pop *p,
 			continue;
 		}
 
+		printf("%d\n", (int)i);
+
 		/* Select a random genome from the species, this will be the
 		 * replacement if there is no crossover and a parent when 
 		 * there is
@@ -289,6 +311,7 @@ static void neat_reproduce(struct neat_pop *p,
 		neat_crossover(p, s, worst_genome, genitor);
 
 		if(p->conf.speciate){
+			/* First remove the genome from all the species */
 			neat_speciate_genome(p, worst_genome);
 		}
 
@@ -365,7 +388,7 @@ const float *neat_run(neat_t population,
 bool neat_epoch(neat_t population, size_t *worst_genome)
 {
 	struct neat_pop *p;
-	size_t i, worst_found_genome;
+	size_t worst_found_genome;
 
 	p = population;
 	assert(p);
@@ -384,13 +407,10 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 		return false;
 	}
 
-	/* Remove the worst genome from the species if it contains it */
-	for(i = 0; i < p->nspecies; i++){
-		if(neat_species_remove_genome_if_exists(p->species[i],
-							worst_found_genome)){
-			neat_remove_species_if_empty(p, i);
-		}
-	}
+	/* Remove the worst genome from the species if it contains it
+	 * and destroy the species if it's empty
+	 */
+	neat_remove_genome_from_species(p, worst_found_genome);
 
 	neat_reproduce(p, worst_found_genome);
 

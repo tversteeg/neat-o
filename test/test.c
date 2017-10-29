@@ -14,7 +14,7 @@ const float xor_inputs[4][2] = {
 };
 const float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 
-TEST neat_create_and_destroy()
+TEST neat_create_and_destroy(void)
 {
 	struct neat_config config;
 	neat_t neat;
@@ -32,7 +32,7 @@ TEST neat_create_and_destroy()
 	PASS();
 }
 
-TEST neat_xor()
+TEST neat_xor(void)
 {
 	neat_t neat;
 	struct neat_config config;
@@ -109,7 +109,7 @@ TEST neat_xor()
 	FAILm("A mutation that solved the xor problem did not occur");
 }
 
-TEST nn_create_and_destroy()
+TEST nn_create_and_destroy(void)
 {
 	struct nn_ffnet *net;
 
@@ -120,7 +120,7 @@ TEST nn_create_and_destroy()
 	PASS();
 }
 
-TEST nn_randomize()
+TEST nn_randomize(void)
 {
 	struct nn_ffnet *net;
 
@@ -135,7 +135,7 @@ TEST nn_randomize()
 	PASS();
 }
 
-TEST nn_copy_weights()
+TEST nn_copy_weights(void)
 {
 	struct nn_ffnet *net, *copy;
 	size_t i;
@@ -164,7 +164,7 @@ TEST nn_copy_weights()
 	PASS();
 }
 
-TEST nn_copy_neurons()
+TEST nn_copy_neurons(void)
 {
 	const float input[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
@@ -193,7 +193,7 @@ TEST nn_copy_neurons()
 	PASS();
 }
 
-TEST nn_neuron_is_connected()
+TEST nn_neuron_is_connected(void)
 {
 	struct nn_ffnet *net;
 	size_t i;
@@ -256,7 +256,7 @@ TEST nn_neuron_is_connected()
 	PASS();
 }
 
-TEST nn_add_layer_zero()
+TEST nn_add_layer_zero(void)
 {
 	const float inputs[] = {1.0f, 10.25f, 0.01f};
 
@@ -303,7 +303,7 @@ TEST nn_add_layer_zero()
 	PASS();
 }
 
-TEST nn_add_layer_single()
+TEST nn_add_layer_single(void)
 {
 	const float input = 1;
 
@@ -333,7 +333,7 @@ TEST nn_add_layer_single()
 	PASS();
 }
 
-TEST nn_add_layer_multi()
+TEST nn_add_layer_multi(void)
 {
 	struct nn_ffnet *net, *copy;
 	size_t i;
@@ -363,7 +363,7 @@ TEST nn_add_layer_multi()
 	PASS();
 }
 
-TEST nn_run()
+TEST nn_run(void)
 {
 	const float input = 1;
 
@@ -395,7 +395,7 @@ TEST nn_run()
 	PASS();
 }
 
-TEST nn_run_relu()
+TEST nn_run_relu(void)
 {
 	const float input[] = {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0};
 	const float expected_output[] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
@@ -431,7 +431,7 @@ TEST nn_run_relu()
 	PASS();
 }
 
-TEST nn_run_xor()
+TEST nn_run_xor(void)
 {
 	/* From left to right: bias, left, right
 	 * From top to bottom: hidden node 1, hidden node 2 and output */
@@ -463,7 +463,7 @@ TEST nn_run_xor()
 	PASS();
 }
 
-TEST nn_time_big()
+TEST nn_time_big(void)
 {
 	const float inputs[1024] = { 1.0 };
 

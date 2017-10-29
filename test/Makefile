@@ -1,7 +1,8 @@
 NAME=neat-test
 
 RM=rm -rf
-CFLAGS=-g -Wall -Wextra -Werror -std=c90 -ansi -pedantic -O3 -I../include
+CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
+       -std=c90 -ansi -pedantic -O3 -I../include
 LDLIBS=-fopenmp -lm
 
 SRCS=test.c ../src/nn/nn.c \

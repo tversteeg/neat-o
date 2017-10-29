@@ -263,10 +263,10 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 
 	/* WEIGHTS */
 	/* Copy the hidden and the input weights */
-	noutput_weights = nn_ffnet_output_weights(new->ninputs,
-							 new->nhiddens,
-							 new->noutputs,
-							 new->nhidden_layers);
+	noutput_weights = nn_ffnet_output_weights(net->ninputs,
+						  net->nhiddens,
+						  net->noutputs,
+						  net->nhidden_layers);
 	memcpy(new->weight,
 	       net->weight,
 	       sizeof(float) * (net->nweights - noutput_weights));

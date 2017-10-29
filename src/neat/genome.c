@@ -73,6 +73,12 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 
 	/* Select a random available weight */
 	available_weights = genome->net->nweights - genome->used_weights;
+
+	/* Create a new layer if there are no more available weights */
+	if(available_weights == 0){
+		neat_genome_add_layer(genome, innovation);
+	}
+
 	select_weight_offset = rand() % available_weights;
 
 	/* Loop over the available weight to find the randomly selected one */
@@ -97,10 +103,19 @@ static void neat_genome_add_neuron(struct neat_genome *genome, int innovation)
 	n = genome->net;
 
 	/* Add + 1 to the selection of the layer so a new one can be created */
-	layer = rand() % (n->nhidden_layers) + 1;
-	if(layer >= n->nhidden_layers){
+	if(n->nhidden_layers == 0){
+		layer = 0;
 		neat_genome_add_layer(genome, innovation);
-		return;
+		/* Update the pointer */
+		n = genome->net;
+	}else{
+		layer = rand() % n->nhidden_layers + 1;
+		if(layer >= n->nhidden_layers){
+			neat_genome_add_layer(genome, innovation);
+			/* Update the pointer */
+			n = genome->net;
+			return;
+		}
 	}
 
 	/* Find the first disconnected layer starting from the selected layer

@@ -1,7 +1,7 @@
 NAME=neat-drawing
 
 RM=rm -rf
-CFLAGS=-g -Wall -pedantic -O1 -I../include \
+CFLAGS=-g -Wall -Wextra -pedantic -O1 -I../include \
        `pkg-config --cflags gtk+-3.0`
 LDLIBS=-fopenmp -lm \
        `pkg-config --libs gtk+-3.0`
