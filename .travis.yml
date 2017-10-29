@@ -8,10 +8,9 @@ os: linux
 
 addons:
   apt:
-    sources:
+    packages:
     - libgtk-3-dev
     - libcairo2-dev
   
 script: 
-- make
 - make test
