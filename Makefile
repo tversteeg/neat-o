@@ -17,14 +17,14 @@ $(LIB): $(OBJS)
 
 .PHONY: example
 example: $(LIB)
-	$(MAKE) -C example LIB="../$(LIB)"
+	"$(MAKE)" -C example LIB="../$(LIB)"
 
 .PHONY: test
 test: $(LIB)
-	$(MAKE) -C test test LIB="../$(LIB)"
+	"$(MAKE)" -C test test LIB="../$(LIB)"
 
 .PHONY: clean
 clean:
 	$(RM) $(OBJS) $(LIB)
-	$(MAKE) -C example clean
-	$(MAKE) -C test clean
+	"$(MAKE)" -C example clean
+	"$(MAKE)" -C test clean

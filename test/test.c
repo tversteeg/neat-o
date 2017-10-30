@@ -19,7 +19,7 @@ TEST neat_create_and_destroy(void)
 	struct neat_config config;
 	neat_t neat;
 
-	config = NEAT_DEFAULT_CONFIG;
+	config = neat_get_default_config();
 	config.network_inputs = 1;
 	config.network_outputs = 1;
 	config.network_hidden_nodes = 1;
@@ -40,7 +40,7 @@ TEST neat_xor(void)
 	size_t i;
 	size_t mutations;
 
-	config = NEAT_DEFAULT_CONFIG;
+	config = neat_get_default_config();
 	config.network_inputs = 2;
 	config.network_outputs = 1;
 	config.network_hidden_nodes = 16;
@@ -192,6 +192,11 @@ TEST nn_neuron_is_connected(void)
 
 	net = nn_ffnet_create(4, 2, 1, 2);
 	ASSERT(net);
+
+	/* Set all the activations so they are not seen as disconnected */
+	for(i = 0; i < net->nactivations; i++){
+		net->activation[i] = NN_ACTIVATION_SIGMOID;
+	}
 
 	/* Inputs must always be true */
 	for(i = 0; i < 4; i++){

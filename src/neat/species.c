@@ -7,10 +7,15 @@
 
 static struct neat_genome *neat_genome_at(struct neat_pop *p, size_t index)
 {
+	struct neat_genome *genome;
+
 	assert(p);
 	assert(index < p->ngenomes);
 
-	return p->genomes[index];
+	genome = p->genomes[index];
+	assert(genome);
+
+	return genome;
 }
 
 struct neat_species *neat_species_create(struct neat_config config)

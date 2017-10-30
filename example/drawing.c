@@ -6,7 +6,7 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 100
+#define POP_SIZE 12
 
 static struct neat_config config;
 
@@ -417,13 +417,11 @@ static void activate(GtkApplication *app, gpointer user_data)
 
 int main(int argc, char *argv[])
 {
-	config = NEAT_DEFAULT_CONFIG;
+	config = neat_get_default_config();
 	config.network_inputs = 2;
 	config.network_outputs = 1;
-	config.network_hidden_nodes = 3;
+	config.network_hidden_nodes = 2;
 	config.population_size = POP_SIZE;
-	config.minimum_time_before_replacement = 10;
-	config.genome_minimum_ticks_alive = 1000;
 
 	srand(time(NULL));
 

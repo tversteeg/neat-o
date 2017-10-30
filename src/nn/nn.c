@@ -434,6 +434,7 @@ bool nn_ffnet_neuron_is_connected(struct nn_ffnet *net, size_t neuron_id)
 	size_t i, start_index, nweights;
 	float *weight;
 	size_t is_connected;
+	enum nn_activation activation;
 
 	assert(net);
 	assert(neuron_id < net->nneurons);
@@ -441,6 +442,12 @@ bool nn_ffnet_neuron_is_connected(struct nn_ffnet *net, size_t neuron_id)
 	/* The input layer is always connected */
 	if(neuron_id < net->ninputs){
 		return true;
+	}
+	
+	/* Passthrough activations are always disconnected */
+	activation = net->activation[neuron_id - net->ninputs];
+	if(activation == NN_ACTIVATION_PASSTHROUGH){
+		return false;
 	}
 
 	start_index = nn_ffnet_get_weight_to_neuron(net, neuron_id);

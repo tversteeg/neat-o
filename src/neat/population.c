@@ -3,39 +3,6 @@
 #include <float.h>
 #include <assert.h>
 
-const struct neat_config NEAT_DEFAULT_CONFIG = {
-	/* These variables need to be set because they are specific for each
-	 * implementation
-	 */
-	0, 0, 0, 0,
-
-	/* Minimum time before replacement */
-	20,
-
-	/* Species crossover probability */
-	0.03,
-	/* Interspecies crossover probability */
-	0.05,
-	/* Mutate species crossover probability */
-	0.3,
-	
-	/* Genome add neuron mutation probability */
-	0.1,
-	/* Genome add link mutation probability */
-	0.12,
-	/* Genome change activation probability */
-	0.01,
-	/* Genome weight mutation probability */
-	0.3,
-	/* Genome mutate all weights probability */
-	0.21,
-
-	/* Genome minimum ticks alive */
-	100,
-	/* Genome compatibility treshold */
-	0.2
-};
-
 static void neat_reset_genomes(struct neat_pop *p)
 {
 	size_t innovation;
@@ -323,8 +290,7 @@ static void neat_crossover(struct neat_pop *p,
 	neat_genome_destroy(child);
 }
 
-static void neat_reproduce(struct neat_pop *p,
-			   size_t worst_genome)
+static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 {
 	float total_avg, selection_random;
 	size_t i;
@@ -342,7 +308,6 @@ static void neat_reproduce(struct neat_pop *p,
 	total_avg = neat_get_total_fitness_average(p);
 
 	selection_random = (float)rand() / (float)RAND_MAX;
-	printf("Total average: %g, ", total_avg);
 	for(i = 0; i < p->nspecies; i++){
 		struct neat_species *s;
 		struct neat_genome *genitor;
@@ -361,8 +326,6 @@ static void neat_reproduce(struct neat_pop *p,
 			selection_random -= selection_prob;
 			continue;
 		}
-
-		printf("%d %g\n", (int)i, selection_prob);
 
 		/* Select a random genome from the species, this will be the
 		 * replacement if there is no crossover and a parent when 
@@ -384,6 +347,31 @@ static void neat_reproduce(struct neat_pop *p,
 
 		break;
 	}
+}
+
+struct neat_config neat_get_default_config(void)
+{
+	struct neat_config conf = {0};
+
+	conf.minimum_time_before_replacement = 10;
+
+	conf.species_crossover_probability = 0.03;
+	conf.interspecies_crossover_probability = 0.05;
+	conf.mutate_species_crossover_probability = 0.3;
+	
+	conf.genome_add_neuron_mutation_probability = 0.1;
+	conf.genome_add_link_mutation_probability = 0.5;
+	conf.genome_change_activation_probability = 0.1;
+	conf.genome_weight_mutation_probability = 0.5;
+	conf.genome_all_weights_mutation_probability = 0.01;
+
+	conf.genome_minimum_ticks_alive = 100;
+	conf.genome_compatibility_treshold = 0.2;
+
+	conf.genome_default_hidden_activation = NN_ACTIVATION_RELU;
+	conf.genome_default_output_activation = NN_ACTIVATION_SIGMOID;
+	
+	return conf;
 }
 
 neat_t neat_create(struct neat_config config)
@@ -439,9 +427,7 @@ void neat_destroy(neat_t population)
 	free(p);
 }
 
-const float *neat_run(neat_t population,
-		      size_t genome_id,
-		      const float *inputs)
+const float *neat_run(neat_t population, size_t genome_id, const float *inputs)
 {
 	struct neat_pop *p;
 
