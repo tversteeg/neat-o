@@ -351,7 +351,7 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 
 struct neat_config neat_get_default_config(void)
 {
-	struct neat_config conf = {0};
+	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	conf.minimum_time_before_replacement = 10;
 
