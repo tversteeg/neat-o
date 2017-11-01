@@ -90,6 +90,29 @@ static void neat_remove_genome_from_species(struct neat_pop *p,
 	}
 }
 
+static float neat_adjusted_genome_fitness(struct neat_pop *p, size_t genome_id)
+{
+	float fitness;
+	size_t i;
+
+	assert(p);
+
+	fitness = p->genomes[genome_id]->fitness;
+
+	for(i = 0; i < p->nspecies; i++){
+		if(neat_species_contains_genome(p->species[i], genome_id)){
+			return neat_species_get_adjusted_fitness(p->species[i],
+								 fitness);
+
+		}
+	}
+
+	/* All genomes should be inside species */
+	assert(false);
+
+	return 0.0f;
+}
+
 static int neat_sort_species_compare(const void *a, const void *b)
 {
 	float s1_fitness, s2_fitness;
@@ -132,7 +155,7 @@ static bool neat_find_worst_genome(struct neat_pop *p, size_t *worst_genome)
 
 		genome = p->genomes[i];
 
-		fitness = genome->fitness;
+		fitness = neat_adjusted_genome_fitness(p, i);
 		if(fitness < worst_fitness &&
 		   genome->time_alive > p->conf.genome_minimum_ticks_alive){
 			*worst_genome = i;
@@ -188,14 +211,15 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 		size_t id;
 		struct neat_genome *species_representant;
 
-		if(p->species[i]->ngenomes == 0){
-			continue;
-		}
+		/* All empty species should be removed at this point */
+		assert(p->species[i]->ngenomes > 0);
+
 		id = neat_species_get_representant(p->species[i]);
 		species_representant = p->genomes[id];
 		if(neat_genome_is_compatible(genome,
 					     species_representant,
-					     compatibility_treshold)){
+					     compatibility_treshold,
+					     p->nspecies)){
 			neat_species_add_genome(p->species[i], genome_id);
 			return;
 		}
@@ -210,6 +234,7 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 						      struct neat_species *s)
 {
 	float random;
+	size_t genitor;
 
 	assert(p);
 	assert(s);
@@ -244,10 +269,12 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 			return NULL;
 		}
 
-		return p->genomes[neat_species_select_genitor(random_species)];
+		genitor = neat_species_select_genitor(p, random_species);
 	}else{
-		return p->genomes[neat_species_select_genitor(s)];
+		genitor = neat_species_select_genitor(p, s);
 	}
+
+	return p->genomes[genitor];
 }
 
 static void neat_crossover(struct neat_pop *p,
@@ -331,7 +358,7 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 		 * replacement if there is no crossover and a parent when 
 		 * there is
 		 */
-		genitor_id = neat_species_select_genitor(s);
+		genitor_id = neat_species_select_genitor(p, s);
 		genitor = p->genomes[genitor_id];
 		/* Continue with finding proper species if the genitor could
 		 * not be found
@@ -340,9 +367,17 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 			continue;
 		}
 
+		/* Crossover replaces the worst genome with a new one, but it's
+		 * still in the old species list
+		 */
 		neat_crossover(p, s, worst_genome, genitor);
 
-		/* First remove the genome from all the species */
+		/* So remove it from all the species lists */
+		neat_remove_genome_from_species(p, worst_genome);
+
+		/* And then assign it to one or create a new one if no species
+		 * matches
+		 */
 		neat_speciate_genome(p, worst_genome);
 
 		break;

@@ -6,7 +6,7 @@
 #include <nn.h>
 #include <neat.h>
 
-#define POP_SIZE 12
+#define POP_SIZE 300
 
 static struct neat_config config;
 
@@ -27,8 +27,8 @@ static cairo_surface_t *surface = NULL;
 static float fitnesses[POP_SIZE];
 static size_t frame = 0;
 static size_t worst = SIZE_MAX;
-static guint renderx = 1;
-static guint rendery = 1;
+static guint renderx = 3;
+static guint rendery = 3;
 static guint rendertick = 0;
 
 static void setup_neat(void)
@@ -44,12 +44,12 @@ static gboolean tick(gpointer data)
 		for(int k = 0; k < 4; k++){
 			const float *results = neat_run(neat, i, xor_inputs[k]);
 
-			error += fabs(results[0] - xor_outputs[k]);
+			error += MIN(fabs(results[0] - xor_outputs[k]), 1.0);
 		}
 
 		float fitness = (4.0 - error) / 4.0;
 		fitnesses[i] = fitness;
-		neat_set_fitness(neat, i, fitness * fitness);
+		neat_set_fitness(neat, i, fitness);
 
 		neat_increase_time_alive(neat, i);
 	}
@@ -382,14 +382,18 @@ static void activate(GtkApplication *app, gpointer user_data)
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 	gtk_box_pack_start(GTK_BOX(box), hbox, FALSE, FALSE, 0);
 
-	GtkWidget *xspinner = gtk_spin_button_new_with_range(1, POP_SIZE, 1);
+	GtkWidget *xspinner = gtk_spin_button_new_with_range(renderx,
+							     POP_SIZE,
+							     1);
 	g_signal_connect(xspinner,
 			 "value-changed",
 			 G_CALLBACK(change_render_x),
 			 NULL);
 	gtk_container_add(GTK_CONTAINER(hbox), xspinner);
 
-	GtkWidget *yspinner = gtk_spin_button_new_with_range(1, POP_SIZE, 1);
+	GtkWidget *yspinner = gtk_spin_button_new_with_range(rendery,
+							     POP_SIZE,
+							     1);
 	g_signal_connect(yspinner,
 			 "value-changed",
 			 G_CALLBACK(change_render_y),
@@ -422,6 +426,12 @@ int main(int argc, char *argv[])
 	config.network_outputs = 1;
 	config.network_hidden_nodes = 2;
 	config.population_size = POP_SIZE;
+
+	/* Genomes don't have to survive for very long because their survival
+	 * state is determined in 1 tick
+	 */
+	config.genome_minimum_ticks_alive = 1;
+	config.minimum_time_before_replacement = 1;
 
 	srand(time(NULL));
 

@@ -24,7 +24,8 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 float neat_species_update_average_fitness(struct neat_pop *p,
 					  struct neat_species *species);
 
-size_t neat_species_select_genitor(struct neat_species *species);
+size_t neat_species_select_genitor(struct neat_pop *p,
+				   struct neat_species *species);
 
 size_t neat_species_get_representant(struct neat_species *species);
 

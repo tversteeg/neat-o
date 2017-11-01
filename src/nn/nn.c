@@ -489,3 +489,23 @@ size_t nn_ffnet_get_weight_to_neuron(struct nn_ffnet *net, size_t neuron_id)
 
 	return first_layer_offset + neuron_id * (net->nhiddens + 1) + 1;
 }
+
+size_t nn_ffnet_get_neuron_at_weight_end(struct nn_ffnet *net,
+					 size_t weight_id)
+{
+	size_t hidden_weights;
+
+	assert(net);
+	assert(weight_id < net->nweights);
+
+	hidden_weights = nn_ffnet_hidden_weights(net->ninputs,
+						 net->nhiddens,
+						 net->nhidden_layers);
+
+	if(weight_id < hidden_weights){
+		
+	}
+	/* TODO implement */
+	
+	return 0;
+}

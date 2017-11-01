@@ -46,8 +46,11 @@ TEST neat_xor(void)
 	config.network_hidden_nodes = 16;
 
 	config.population_size = 100;
+	/* Genomes don't have to survive for very long because their survival
+	 * state is determined in 1 tick
+	 */
+	config.genome_minimum_ticks_alive = 1;
 	config.minimum_time_before_replacement = 1;
-	config.genome_minimum_ticks_alive = 20;
 
 	neat = neat_create(config);
 	ASSERT(neat);
@@ -55,7 +58,7 @@ TEST neat_xor(void)
 	mutations = 0;
 
 	/* Epochs */
-	for(i = 0; i < 10000; i++){
+	for(i = 0; i < 100000; i++){
 		size_t j;
 
 		/* Organisms */
@@ -74,7 +77,9 @@ TEST neat_xor(void)
 				error += fabs(results[0] - xor_outputs[k]);
 			}
 
-			if(error < 0.1){
+			fitness = (4.0 - error) / 4.0;
+
+			if(fitness > 0.9){
 				char message[512];
 
 				neat_destroy(neat);
@@ -85,8 +90,7 @@ TEST neat_xor(void)
 				PASSm(message);
 			}
 
-			fitness = (4.0 - error) / 4.0;
-			neat_set_fitness(neat, j, fitness * fitness);
+			neat_set_fitness(neat, j, fitness);
 
 			neat_increase_time_alive(neat, j);
 		}

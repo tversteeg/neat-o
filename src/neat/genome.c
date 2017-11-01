@@ -71,6 +71,10 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 	assert(genome);
 	assert(genome->net);
 
+	/* TODO change to finding new empty links with passthrough and
+	 * connecting those
+	 */
+
 	/* Select a random available weight */
 	available = genome->net->nweights - genome->used_weights;
 	/* Do nothing if there are no more available weights */
@@ -82,7 +86,11 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 
 	/* Loop over the available weight to find the randomly selected one */
 	for(i = 0; i < genome->net->nweights; i++){
-		if(genome->net->weight[i] == 0.0f && !select_weight_offset--){
+		if(genome->net->weight[i] != 0.0f){
+			continue;
+		}
+
+		if(!select_weight_offset--){
 			genome->net->weight[i] = neat_random_two();
 			genome->innovations[i] = innovation;
 			genome->used_weights++;
@@ -270,13 +278,13 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 					  const struct neat_genome *parent2)
 {
 	struct neat_genome *child;
-	size_t i;
+	size_t i, min_weights;
 
 	assert(parent1);
 	assert(parent2);
 
-	/* Take the biggest parent as the base */
-	if(parent2->net->nweights > parent1->net->nweights){
+	/* Take the most fit parent as the base */
+	if(parent2->fitness > parent1->fitness){
 		const struct neat_genome *tmp;
 
 		tmp = parent1;
@@ -286,23 +294,36 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 
 	child = neat_genome_copy(parent1);
 
-	/* TODO fix enabling */
-	for(i = 0; i < parent2->net->nweights; i++){
+	/* Iterate until the least amount of weights, if there any excess
+	 * weights for the child then they are inherited automatically
+	 */
+	min_weights = parent1->net->nweights;
+	if(parent2->net->nweights < min_weights){
+		min_weights = parent2->net->nweights;
+	}
+
+	for(i = 0; i < min_weights; i++){
 		int in1, in2;
+		float weight1, weight2;
 
 		in1 = parent1->innovations[i];
 		in2 = parent2->innovations[i];
-		if(in1 == in2){
-			if(parent1->fitness < parent2->fitness){
-				child->net->weight[i] = parent2->net->weight[i];
-			}
+		if(in1 != in2){
+			/* Disjoint genes will be automatically chosen from the
+			 * fittest genome
+			 */
 			continue;
 		}
-		if(in1 == 0 && in2 != 0){
-			child->net->weight[i] = parent2->net->weight[i];
-			child->innovations[i] = parent2->innovations[i];
-			child->used_weights++;
-		}
+
+		/* Matching genes */
+		weight1 = parent1->net->weight[i];
+		weight2 = parent2->net->weight[i];
+
+		/* Take the average (blended crossover) */
+		child->net->weight[i] = (weight1 + weight2) / 2.0f;
+		/* TODO choose between average and random based
+		 * on chance (uniform crossover)
+		 */
 	}
 
 	return child;
@@ -317,7 +338,12 @@ void neat_genome_mutate(struct neat_genome *genome,
 	assert(genome);
 	assert(innovation > 0);
 
-	random = (float)rand() / (float)RAND_MAX;
+	/* Always add a new layer if there are no hidden layers yet */
+	if(genome->net->nhidden_layers == 0){
+		random = 0.0f;
+	}else{
+		random = (float)rand() / (float)RAND_MAX;
+	}
 	if(random < config.genome_add_neuron_mutation_probability){
 		neat_genome_add_neuron(genome,
 				       innovation,
@@ -375,7 +401,8 @@ void neat_genome_add_random_node(struct neat_genome *genome, int innovation)
 
 bool neat_genome_is_compatible(const struct neat_genome *genome,
 			       const struct neat_genome *other,
-			       float treshold)
+			       float treshold,
+			       size_t total_species)
 {
 	size_t i, excess, disjoint, matching;
 	size_t weights1, weights2, min_weights, max_weights;
@@ -398,9 +425,13 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 		max_weights = weights1;
 	}
 
+	/* The excess is always the difference between the biggest and the
+	 * smallest genome
+	 */
 	excess = max_weights - min_weights;
 	disjoint = 0;
-	matching = 0;
+	/* Always add an extra one so we don't get a divide by zero */
+	matching = 1;
 	weight_sum = 0.0;
 
 	for(i = 0; i < min_weights; i++){
@@ -416,9 +447,15 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 		}
 	}
 
-	distance = 1.0 * excess / (float)max_weights;
-	distance += 1.5 * disjoint / (float)max_weights;
-	distance += 0.4 * weight_sum / (float)matching;
+	distance = 1.0f * excess / (float)max_weights;
+	distance += 1.5f * disjoint / (float)max_weights;
+	distance += 0.4f * weight_sum / (float)matching;
+
+	/* Make sure there are not too many or too few species by making
+	 * the treshold higher if there are already a lot of species and by 
+	 * making it lower if there are already too few
+	 */
+	treshold *= 0.1f + (total_species / 5.0f);
 
 	return distance < treshold;
 }

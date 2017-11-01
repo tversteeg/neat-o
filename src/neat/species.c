@@ -63,7 +63,7 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 
 	sum_fitness = 0.0f;
 	for(i = 0; i < species->ngenomes; i++){
-		sum_fitness += neat_genome_at(p, i)->fitness;
+		sum_fitness += neat_genome_at(p, species->genomes[i])->fitness;
 	}
 
 	species->avg_fitness = sum_fitness / (float)species->ngenomes;
@@ -71,16 +71,30 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 	return species->avg_fitness;
 }
 
-size_t neat_species_select_genitor(struct neat_species *species)
+size_t neat_species_select_genitor(struct neat_pop *p,
+				   struct neat_species *species)
 {
-	size_t index;
+	size_t i, best_genome;
+	float best_fitness;
 
+	assert(p);
 	assert(species);
 	assert(species->ngenomes > 0);
+	
+	/* Find the genome in this species with the highest fitness */
+	best_genome = 0;
+	best_fitness = 0.0f;
+	for(i = 0; i < species->ngenomes; i++){
+		float fitness;
+	
+		fitness = neat_genome_at(p, species->genomes[i])->fitness;
+		if(best_fitness < fitness){
+			best_fitness = fitness;
+			best_genome = i;
+		}
+	}
 
-	index = rand() % species->ngenomes;
-
-	return species->genomes[index];
+	return species->genomes[best_genome];
 }
 
 size_t neat_species_get_representant(struct neat_species *species)
