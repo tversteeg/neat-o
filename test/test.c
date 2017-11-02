@@ -43,9 +43,9 @@ TEST neat_xor(void)
 	config = neat_get_default_config();
 	config.network_inputs = 2;
 	config.network_outputs = 1;
-	config.network_hidden_nodes = 16;
+	config.network_hidden_nodes = 2;
 
-	config.population_size = 100;
+	config.population_size = 300;
 	/* Genomes don't have to survive for very long because their survival
 	 * state is determined in 1 tick
 	 */

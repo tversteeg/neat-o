@@ -27,6 +27,9 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 size_t neat_species_select_genitor(struct neat_pop *p,
 				   struct neat_species *species);
 
+size_t neat_species_select_second_genitor(struct neat_pop *p,
+					  struct neat_species *species);
+
 size_t neat_species_get_representant(struct neat_species *species);
 
 void neat_species_add_genome(struct neat_species *species,

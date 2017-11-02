@@ -240,24 +240,22 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 	assert(s);
 
 	random = (float)rand() / (float)RAND_MAX;
-
-	/* Check for interspecies mutation which won't work with
-	 * only 1 species
-	 */
-	if(p->nspecies > 1 &&
-	   random < p->conf.interspecies_crossover_probability){
+	if(random < p->conf.interspecies_crossover_probability){
 		size_t species_index;
 		struct neat_species *random_species;
 
+		/* Select a random other species */
 		species_index = rand() % p->nspecies;
 		random_species = p->species[species_index];
 		assert(random_species);
 
 		/* We don't want to do interspecies crossover on the same
-		 * species
+		 * species, so get the species next to it
 		 */
 		if(random_species == s){
-			/* We can't move the index lower than 0 */
+			/* We can't move the index lower than 0 so select 1
+			 * if it's 0 or take a lower one if it's higher than 0
+			 */
 			if(species_index == 0){
 				random_species = p->species[species_index + 1];
 			}else{
@@ -265,13 +263,16 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 			}
 		}
 
-		if(random_species->ngenomes == 0){
-			return NULL;
-		}
+		assert(random_species->ngenomes > 0);
 
+		/* Get the best genome from the randomly selected species */
 		genitor = neat_species_select_genitor(p, random_species);
 	}else{
-		genitor = neat_species_select_genitor(p, s);
+		/* Get the second best one if there is only 1 species (so that
+		 * would be the first) or if there is a non-interspecies
+		 * crossover
+		 */
+		genitor = neat_species_select_second_genitor(p, s);
 	}
 
 	return p->genomes[genitor];
@@ -295,10 +296,12 @@ static void neat_crossover(struct neat_pop *p,
 
 		/* Do a crossover with 2 parents if parent2 is valid */
 		parent2 = neat_crossover_get_parent2(p, s);
-		if(parent2){
-			child = neat_genome_reproduce(parent, parent2);
-		}else{
+
+		if(parent == parent2){
+			/* Just copy one of the parents if they are the same */
 			child = neat_genome_copy(parent);
+		}else{
+			child = neat_genome_reproduce(parent, parent2);
 		}
 	}else{
 		/* Else copy the first parent */
@@ -359,13 +362,10 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 		 * there is
 		 */
 		genitor_id = neat_species_select_genitor(p, s);
+		assert(genitor_id < p->ngenomes);
+
 		genitor = p->genomes[genitor_id];
-		/* Continue with finding proper species if the genitor could
-		 * not be found
-		 */
-		if(!genitor){
-			continue;
-		}
+		assert(genitor);
 
 		/* Crossover replaces the worst genome with a new one, but it's
 		 * still in the old species list
@@ -390,12 +390,12 @@ struct neat_config neat_get_default_config(void)
 
 	conf.minimum_time_before_replacement = 10;
 
-	conf.species_crossover_probability = 0.03;
-	conf.interspecies_crossover_probability = 0.05;
-	conf.mutate_species_crossover_probability = 0.3;
+	conf.species_crossover_probability = 0.5;
+	conf.interspecies_crossover_probability = 0.1;
+	conf.mutate_species_crossover_probability = 0.5;
 	
 	conf.genome_add_neuron_mutation_probability = 0.1;
-	conf.genome_add_link_mutation_probability = 0.5;
+	conf.genome_add_link_mutation_probability = 0.3;
 	conf.genome_change_activation_probability = 0.1;
 	conf.genome_weight_mutation_probability = 0.5;
 	conf.genome_all_weights_mutation_probability = 0.01;
@@ -419,6 +419,9 @@ neat_t neat_create(struct neat_config config)
 	assert(config.population_size > 0);
 	assert(config.minimum_time_before_replacement > 0);
 
+	/* Set all the allocated values to 0 so we don't have to manually
+	 * set everything
+	 */
 	p = calloc(1, sizeof(struct neat_pop));
 	assert(p);
 
@@ -435,8 +438,6 @@ neat_t neat_create(struct neat_config config)
 	neat_reset_genomes(p);
 
 	/* Create the starting species */
-	p->nspecies = 0;
-	p->species = NULL;
 	neat_create_new_species(p, true);
 
 	return p;
@@ -551,6 +552,9 @@ size_t neat_get_species_id(neat_t population, size_t genome_id)
 	assert(p);
 	assert(genome_id < p->ngenomes);
 
+	/* Return the first species that contains the genome id (there should
+	 * only be one anyway)
+	 */
 	for(i = 0; i < p->nspecies; i++){
 		if(neat_species_contains_genome(p->species[i], genome_id)){
 			return i;

@@ -31,17 +31,6 @@ static float nn_relu(float input)
 	return input;
 }
 
-static float nn_rand(float start, float end)
-{
-	float range;
-
-	assert(start < end);
-
-	range = end - start;
-
-	return (float)rand() / (float)(RAND_MAX / range) + start;
-}
-
 static float nn_activate(enum nn_activation activation, float input)
 {
 	switch(activation){
@@ -58,6 +47,17 @@ static float nn_activate(enum nn_activation activation, float input)
 	}
 
 	return 0.0f;
+}
+
+static float nn_rand(float start, float end)
+{
+	float range;
+
+	assert(start < end);
+
+	range = end - start;
+
+	return (float)rand() / (float)(RAND_MAX / range) + start;
 }
 
 static void nn_ffnet_set_pointers(struct nn_ffnet *net)

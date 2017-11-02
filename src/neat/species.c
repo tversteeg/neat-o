@@ -27,7 +27,9 @@ struct neat_species *neat_species_create(struct neat_config config)
 	species = calloc(1, sizeof(struct neat_species));
 	assert(species);
 
-	/* Create all the genomes but don't use them yet */
+	/* Create all the genomes but don't use them yet, so we don't have
+	 * to resize the array when species gets added or removed
+	 */
 	species->genomes = calloc(config.population_size, sizeof(size_t));
 	assert(species->genomes);
 
@@ -81,7 +83,7 @@ size_t neat_species_select_genitor(struct neat_pop *p,
 	assert(species);
 	assert(species->ngenomes > 0);
 	
-	/* Find the genome in this species with the highest fitness */
+	/* Return the genome in this species with the highest fitness */
 	best_genome = 0;
 	best_fitness = 0.0f;
 	for(i = 0; i < species->ngenomes; i++){
@@ -97,13 +99,54 @@ size_t neat_species_select_genitor(struct neat_pop *p,
 	return species->genomes[best_genome];
 }
 
+size_t neat_species_select_second_genitor(struct neat_pop *p,
+					  struct neat_species *species)
+{
+	size_t i, best_genome, second_best_genome;
+	float best_fitness, second_best_fitness;
+
+	assert(p);
+	assert(species);
+
+	/* If there is only one genome in the species there are not that many
+	 * options to choose from
+	 */
+	if(species->ngenomes == 1){
+		return species->genomes[0];
+	}
+
+	/* TODO choose randomly between one of the best instead of the
+	 * second best one, the current algorithm is highly flawed because it
+	 * doesn't really select the second best one
+	 */
+	
+	best_genome = second_best_genome = 0;
+	best_fitness = second_best_fitness = 0.0f;
+	for(i = 0; i < species->ngenomes; i++){
+		float fitness;
+	
+		fitness = neat_genome_at(p, species->genomes[i])->fitness;
+		if(best_fitness < fitness){
+			second_best_fitness = best_fitness;
+			second_best_genome = best_genome;
+
+			best_fitness = fitness;
+			best_genome = i;
+		}else if(second_best_fitness < fitness){
+			second_best_fitness = fitness;
+			second_best_genome = i;
+		}
+	}
+
+	return species->genomes[second_best_genome];
+}
+
 size_t neat_species_get_representant(struct neat_species *species)
 {
 	assert(species);
 	assert(species->ngenomes > 0);
 
 	/* The representant will be the first genome assigned to this species */
-
 	return species->genomes[0];
 }
 
@@ -114,7 +157,7 @@ void neat_species_add_genome(struct neat_species *species,
 
 	assert(species);
 
-	/* Check if the genome is already there */
+	/* Do nothing if the genome is already there */
 	for(i = 0; i < species->ngenomes; i++){
 		if(species->genomes[i] == genome_id){
 			return;
