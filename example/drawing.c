@@ -27,8 +27,8 @@ static cairo_surface_t *surface = NULL;
 static float fitnesses[POP_SIZE];
 static size_t frame = 0;
 static size_t worst = SIZE_MAX;
-static guint renderx = 3;
-static guint rendery = 3;
+static guint renderx = 1;
+static guint rendery = 1;
 static guint rendertick = 0;
 
 static void setup_neat(void)
@@ -382,7 +382,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 	gtk_box_pack_start(GTK_BOX(box), hbox, FALSE, FALSE, 0);
 
-	GtkWidget *xspinner = gtk_spin_button_new_with_range(renderx,
+	GtkWidget *xspinner = gtk_spin_button_new_with_range(1,
 							     POP_SIZE,
 							     1);
 	g_signal_connect(xspinner,
@@ -391,7 +391,7 @@ static void activate(GtkApplication *app, gpointer user_data)
 			 NULL);
 	gtk_container_add(GTK_CONTAINER(hbox), xspinner);
 
-	GtkWidget *yspinner = gtk_spin_button_new_with_range(rendery,
+	GtkWidget *yspinner = gtk_spin_button_new_with_range(1,
 							     POP_SIZE,
 							     1);
 	g_signal_connect(yspinner,
@@ -432,6 +432,11 @@ int main(int argc, char *argv[])
 	 */
 	config.genome_minimum_ticks_alive = 1;
 	config.minimum_time_before_replacement = 1;
+
+	/* We only rarely want to add another nouron because a XOR network
+	 * should work just fine with 1 hidden layer
+	 */
+	config.genome_add_neuron_mutation_probability = 0.01;
 
 	srand(time(NULL));
 

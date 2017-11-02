@@ -14,7 +14,7 @@ $(NAME): $(OBJS) ${LIB}
 
 .PHONY: test
 test: $(NAME)
-	./$(NAME)
+	./$(NAME) -v
 
 .PHONY: clean
 clean:

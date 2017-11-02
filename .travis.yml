@@ -13,4 +13,4 @@ addons:
     - libcairo2-dev
   
 script: 
-- make
+- make test

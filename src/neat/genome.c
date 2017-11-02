@@ -391,14 +391,6 @@ const float *neat_genome_run(struct neat_genome *genome, const float *inputs)
 	return nn_ffnet_run(genome->net, inputs);
 }
 
-void neat_genome_add_random_node(struct neat_genome *genome, int innovation)
-{
-	assert(genome);
-	assert(innovation > 0);
-
-	/* TODO implement */
-}
-
 bool neat_genome_is_compatible(const struct neat_genome *genome,
 			       const struct neat_genome *other,
 			       float treshold,

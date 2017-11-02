@@ -87,6 +87,7 @@ TEST neat_xor(void)
 				sprintf(message,
 					"Found solution after %d iterations",
 					(int)i);
+				
 				PASSm(message);
 			}
 
