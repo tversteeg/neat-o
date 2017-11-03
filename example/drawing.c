@@ -25,10 +25,10 @@ static guint thread;
 static cairo_surface_t *surface = NULL;
 
 static float fitnesses[POP_SIZE];
+static float best_fitness = 0.0f;
 static size_t frame = 0;
-static size_t worst = SIZE_MAX;
-static guint renderx = 1;
-static guint rendery = 1;
+static size_t worst = SIZE_MAX, best = SIZE_MAX;
+static guint renderx = 1, rendery = 1;
 static guint rendertick = 0;
 
 static void setup_neat(void)
@@ -44,11 +44,15 @@ static gboolean tick(gpointer data)
 		for(int k = 0; k < 4; k++){
 			const float *results = neat_run(neat, i, xor_inputs[k]);
 
-			error += MIN(fabs(results[0] - xor_outputs[k]), 1.0);
+			error += MIN(fabs(results[0] - xor_outputs[k]), 1.0f);
 		}
 
-		float fitness = (4.0 - error) / 4.0;
+		float fitness = (4.0f - error) / 4.0f;
 		fitnesses[i] = fitness;
+		if(fitness > best_fitness){
+			best_fitness = fitness;
+			best = i;
+		}
 		neat_set_fitness(neat, i, fitness);
 
 		neat_increase_time_alive(neat, i);
@@ -92,9 +96,16 @@ static void draw_neuron(cairo_t *cr,
 				break;
 			case NN_ACTIVATION_SIGMOID:
 				cairo_rectangle(cr,
-						x - radius / 2,
-						y - radius / 2,
-						radius,
+						x - radius,
+						y - radius,
+						radius * 2,
+						radius * 2);
+				break;
+			case NN_ACTIVATION_FAST_SIGMOID:
+				cairo_rectangle(cr,
+						x - radius,
+						y - radius,
+						radius * 2,
 						radius);
 				break;
 			default:
@@ -250,6 +261,73 @@ static void draw_neat_network(cairo_t *cr,
 	}
 }
 
+static void draw_neat_info(cairo_t *cr)
+{
+	guint y = 13;
+
+	char frame_text[256];
+	cairo_move_to(cr, 3, y);
+	sprintf(frame_text, "Frame: %d", (int)frame);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	size_t num_species = neat_get_num_species(neat);
+	cairo_move_to(cr, 3, y += 16);
+	sprintf(frame_text, "Num species: %d", (int)num_species);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	if(num_species == 0){
+		return;
+	}
+
+	cairo_move_to(cr, 3, y += 24);
+	sprintf(frame_text, "Best genome:");
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	cairo_move_to(cr, 3, y += 16);
+	sprintf(frame_text, "ID: %d", (int)best);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	cairo_move_to(cr, 3, y += 16);
+	sprintf(frame_text, "Fitness: %.2f", best_fitness);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	size_t best_species = neat_get_species_id(neat, best);
+	cairo_move_to(cr, 3, y += 16);
+	sprintf(frame_text, "Species ID: %d", (int)best_species);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	size_t species_size = neat_get_num_genomes_in_species(neat,
+							      best_species);
+	cairo_move_to(cr, 3, y += 16);
+	sprintf(frame_text, "Species size: %d", (int)species_size);
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	cairo_move_to(cr, 3, y += 24);
+	sprintf(frame_text, "Species:");
+	cairo_show_text(cr, frame_text); 
+	cairo_stroke(cr);
+
+	for(size_t i = 0; i < num_species; i++){
+		size_t species_size = neat_get_num_genomes_in_species(neat, i);
+		float fitness = neat_get_average_fitness_of_species(neat, i);
+		cairo_move_to(cr, 3, y += 16);
+		sprintf(frame_text,
+			"%d: %.2f, %d",
+			(int)i,
+			fitness,
+			(int)species_size);
+		cairo_show_text(cr, frame_text); 
+		cairo_stroke(cr);
+	}
+}
+
 static void clear(void)
 {
 	cairo_t *cr = cairo_create(surface);
@@ -264,8 +342,6 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 {
 	(void)data;
 
-	char frame_text[256];
-
 	cairo_set_line_width(cr, 2.0);
 
 	GtkStyleContext *context = gtk_widget_get_style_context(widget);
@@ -279,11 +355,9 @@ static gboolean draw(GtkWidget *widget, cairo_t *cr, gpointer data)
 				    &color);
 	gdk_cairo_set_source_rgba(cr, &color);
 
-	cairo_set_font_size(cr, 13);
-	cairo_move_to(cr, 3, 13);
-	snprintf(frame_text, 256, "Frame: %d", (int)frame);
-	cairo_show_text(cr, frame_text); 
-	cairo_stroke(cr);
+	cairo_set_font_size(cr, 11);
+
+	draw_neat_info(cr);
 
 	guint xoffset = 100;
 	width -= xoffset;
@@ -436,7 +510,7 @@ int main(int argc, char *argv[])
 	/* We only rarely want to add another nouron because a XOR network
 	 * should work just fine with 1 hidden layer
 	 */
-	config.genome_add_neuron_mutation_probability = 0.01;
+	config.genome_add_neuron_mutation_probability = 0.02;
 
 	srand(time(NULL));
 

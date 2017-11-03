@@ -7,9 +7,9 @@
 
 struct neat_genome{
 	struct nn_ffnet *net;
-	int *innovations;
-	size_t ninnovations;
-	size_t used_weights;
+	int *innov_weight, *innov_activ;
+	size_t ninnov_weights, ninnov_activs;
+	size_t used_weights, used_activs;
 
 	float fitness;
 	size_t time_alive;

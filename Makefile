@@ -9,11 +9,15 @@ LDLIBS=-lm
 SRCS=src/nn/nn.c src/neat/population.c src/neat/species.c src/neat/genome.c
 OBJS=$(SRCS:.c=.o)
 
-all: $(LIB)
+all: build
 
 $(LIB): $(OBJS)
 	$(AR) $@ $^
 	$(RANLIB) $@
+
+.PHONY: build
+build: $(LIB)
+	"$(MAKE)" -C test LIB="../$(LIB)"
 
 .PHONY: example
 example: $(LIB)

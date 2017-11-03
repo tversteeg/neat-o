@@ -17,15 +17,29 @@ static void neat_genome_zeroify_innovations(struct neat_genome *genome)
 	assert(genome);
 	assert(genome->net);
 
+	/* Set the weight innovations to 0 if the value of the weight is 0.0 */
 	genome->used_weights = 0;
-	for(i = 0; i < genome->net->nweights; i++){
+	for(i = 0; i < genome->ninnov_weights; i++){
 		int weight_is_set;
 
 		/* Set the innovation to 0 if the weight is 0 */
 		weight_is_set = genome->net->weight[i] != 0;
-		genome->innovations[i] *= weight_is_set;
+		genome->innov_weight[i] *= weight_is_set;
 		genome->used_weights += weight_is_set;
 	}
+
+	/* Set the weight innovations to 0 if the value of the weight is 0.0 */
+	genome->used_activs = 0;
+	for(i = 0; i < genome->ninnov_activs; i++){
+		int activ_is_not_passthrough;
+
+		/* Set the innovation to 0 if the weight is 0 */
+		activ_is_not_passthrough = genome->net->activation[i] != 0;
+		genome->innov_activ[i] *= activ_is_not_passthrough;
+		genome->used_activs += activ_is_not_passthrough;
+	}
+
+	/*TODO make the used_activs and used_weights more sensible */
 }
 
 static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
@@ -37,18 +51,35 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
 	assert(genome);
 	assert(genome->net);
 
+	/* Allocate the weight innovations */
 	bytes = sizeof(int) * genome->net->nweights;
 	assert(bytes > 0);
-	genome->innovations = realloc(genome->innovations, bytes);
-	assert(genome->innovations);
+	genome->innov_weight = realloc(genome->innov_weight, bytes);
+	assert(genome->innov_weight);
 
-	diff = genome->net->nweights - genome->ninnovations;
-	innov = genome->innovations + genome->ninnovations;
+	/* Set the newly allocated part to the current innovation */
+	diff = genome->net->nweights - genome->ninnov_weights;
+	innov = genome->innov_weight + genome->ninnov_weights;
 	for(i = 0; i < diff; i++){
 		*innov++ = innovation;
 	}
 
-	genome->ninnovations = genome->net->nweights;
+	genome->ninnov_weights = genome->net->nweights;
+
+	/* Allocate the activation innovations */
+	bytes = sizeof(int) * genome->net->nactivations;
+	assert(bytes > 0);
+	genome->innov_activ = realloc(genome->innov_activ, bytes);
+	assert(genome->innov_activ);
+
+	/* Set the newly allocated part to the current innovation */
+	diff = genome->net->nactivations - genome->ninnov_activs;
+	innov = genome->innov_activ + genome->ninnov_activs;
+	for(i = 0; i < diff; i++){
+		*innov++ = innovation;
+	}
+
+	genome->ninnov_activs = genome->net->nactivations;
 
 	return bytes;
 }
@@ -92,7 +123,7 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 
 		if(!select_weight_offset--){
 			genome->net->weight[i] = neat_random_two();
-			genome->innovations[i] = innovation;
+			genome->innov_weight[i] = innovation;
 			genome->used_weights++;
 			return;
 		}
@@ -127,24 +158,28 @@ static void neat_genome_add_neuron(struct neat_genome *genome,
 	}
 
 	/* Find the first disconnected layer starting from the selected layer
-	 * and set the weight value to a random previous node
+	 * and set the weight value to a random previous neuron
 	 */
 	for(i = n->ninputs + layer * n->nhiddens; i < n->nneurons; i++){
 		if(!nn_ffnet_neuron_is_connected(n, i)){
 			size_t start, weight_index;
 
+			/* Set the weight connecting the previous neuron */
 			start = nn_ffnet_get_weight_to_neuron(n, i);
 			weight_index = start + (rand() % n->nhiddens);
 
 			n->weight[weight_index] = neat_random_two();
-			genome->innovations[weight_index] = innovation;
+			genome->innov_weight[weight_index] = innovation;
 			genome->used_weights++;
+
 			/* Set the output activation if it's the last layer */
 			if(layer == n->nhidden_layers){
 				n->activation[i - n->ninputs] = default_output;
 			}else{
 				n->activation[i - n->ninputs] = default_hidden;
 			}
+			genome->innov_activ[i - n->ninputs] = innovation;
+			genome->used_activs++;
 			return;
 		}
 	}
@@ -159,20 +194,22 @@ static void neat_genome_mutate_activation(struct neat_genome *genome,
 	size_t random_activ;
 	char new_activation;
 
-	/* TODO apply innovation */
-	(void)innovation;
-
 	assert(genome);
 	assert(genome->net);
 
 	random_activ = rand() % genome->net->nactivations;
 
+	/* TODO make the new activation never be passthrough */
+	/* Randomly select a new activation function */
 	new_activation = rand() % _NN_ACTIVATION_COUNT;
+
+	/* If the activation is the same as the last one just increment it */
 	if(genome->net->activation[random_activ] == new_activation){
 		new_activation = (new_activation + 1) % _NN_ACTIVATION_COUNT;
 	}
 
 	genome->net->activation[random_activ] = new_activation;
+	genome->innov_activ[random_activ] = innovation;
 }
 
 static void neat_genome_mutate_weight(struct neat_genome *genome,
@@ -193,7 +230,7 @@ static void neat_genome_mutate_weight(struct neat_genome *genome,
 	for(i = 0; i < genome->net->nweights; i++){
 		if(genome->net->weight[i] != 0.0f && !select_weight_offset--){
 			genome->net->weight[i] = neat_random_two();
-			genome->innovations[i] = innovation;
+			genome->innov_weight[i] = innovation;
 			return;
 		}
 	}
@@ -213,7 +250,7 @@ static void neat_genome_mutate_all_weights(struct neat_genome *genome,
 		weight = genome->net->weight + i;
 		if(*weight != 0.0f){
 			*weight = neat_random_two();
-			genome->innovations[i] = innovation;
+			genome->innov_weight[i] = innovation;
 		}
 	}
 }
@@ -245,8 +282,11 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 	nn_ffnet_randomize(genome->net);
 
 	neat_genome_allocate_innovations(genome, innovation);
-	for(i = 0; i < genome->net->nweights; i++){
-		genome->innovations[i] = innovation;
+	for(i = 0; i < genome->ninnov_weights; i++){
+		genome->innov_weight[i] = innovation;
+	}
+	for(i = 0; i < genome->ninnov_activs; i++){
+		genome->innov_activ[i] = innovation;
 	}
 	neat_genome_zeroify_innovations(genome);
 
@@ -266,10 +306,10 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	new->net = nn_ffnet_copy(genome->net);
 	assert(new->net);
 
-	new->innovations = NULL;
+	new->innov_weight = NULL;
 	bytes = neat_genome_allocate_innovations(new, 1);
-	memcpy(new->innovations, genome->innovations, bytes);
-	assert(new->innovations);
+	memcpy(new->innov_weight, genome->innov_weight, bytes);
+	assert(new->innov_weight);
 
 	return new;
 }
@@ -297,17 +337,17 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 	/* Iterate until the least amount of weights, if there any excess
 	 * weights for the child then they are inherited automatically
 	 */
-	min_weights = parent1->net->nweights;
-	if(parent2->net->nweights < min_weights){
-		min_weights = parent2->net->nweights;
+	min_weights = parent1->ninnov_weights;
+	if(parent2->ninnov_weights < min_weights){
+		min_weights = parent2->ninnov_weights;
 	}
 
 	for(i = 0; i < min_weights; i++){
 		int in1, in2;
 		float weight1, weight2;
 
-		in1 = parent1->innovations[i];
-		in2 = parent2->innovations[i];
+		in1 = parent1->innov_weight[i];
+		in2 = parent2->innov_weight[i];
 		if(in1 != in2){
 			/* Disjoint genes will be automatically chosen from the
 			 * fittest genome
@@ -325,6 +365,8 @@ struct neat_genome *neat_genome_reproduce(const struct neat_genome *parent1,
 		 * on chance (uniform crossover)
 		 */
 	}
+
+	/* TODO also do this for the activations */
 
 	return child;
 }
@@ -379,7 +421,7 @@ void neat_genome_destroy(struct neat_genome *genome)
 	assert(genome);
 
 	nn_ffnet_destroy(genome->net);
-	free(genome->innovations);
+	free(genome->innov_weight);
 	free(genome);
 }
 
@@ -404,11 +446,11 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 	assert(other);
 	assert(genome->net);
 	assert(other->net);
-	assert(genome->innovations);
-	assert(other->innovations);
+	assert(genome->innov_weight);
+	assert(other->innov_weight);
 
-	weights1 = genome->ninnovations;
-	weights2 = other->ninnovations;
+	weights1 = genome->ninnov_weights;
+	weights2 = other->ninnov_weights;
 	if(weights1 < weights2){
 		min_weights = weights1;
 		max_weights = weights2;
@@ -427,7 +469,7 @@ bool neat_genome_is_compatible(const struct neat_genome *genome,
 	weight_sum = 0.0;
 
 	for(i = 0; i < min_weights; i++){
-		if(genome->innovations[i] == other->innovations[i]){
+		if(genome->innov_weight[i] == other->innov_weight[i]){
 			float weight1, weight2;
 
 			weight1 = genome->net->weight[i];

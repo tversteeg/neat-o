@@ -86,6 +86,10 @@ static void neat_remove_genome_from_species(struct neat_pop *p,
 		if(neat_species_remove_genome_if_exists(p->species[i],
 							genome_id)){
 			neat_remove_species_if_empty(p, i);
+			/* Move i one back because the array has been
+			 * changed by the possible removal of the species
+			 */
+			i--;
 		}
 	}
 }
@@ -155,6 +159,7 @@ static bool neat_find_worst_genome(struct neat_pop *p, size_t *worst_genome)
 
 		genome = p->genomes[i];
 
+		/* Find the genome with the lowest adjusted fitness */
 		fitness = neat_adjusted_genome_fitness(p, i);
 		if(fitness < worst_fitness &&
 		   genome->time_alive > p->conf.genome_minimum_ticks_alive){
@@ -367,13 +372,8 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 		genitor = p->genomes[genitor_id];
 		assert(genitor);
 
-		/* Crossover replaces the worst genome with a new one, but it's
-		 * still in the old species list
-		 */
+		/* Crossover replaces the worst genome with a new one */
 		neat_crossover(p, s, worst_genome, genitor);
-
-		/* So remove it from all the species lists */
-		neat_remove_genome_from_species(p, worst_genome);
 
 		/* And then assign it to one or create a new one if no species
 		 * matches
@@ -501,6 +501,7 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	 */
 	neat_remove_genome_from_species(p, worst_found_genome);
 
+	/* Fill the now empty worst genome slot with a newly created one */
 	neat_reproduce(p, worst_found_genome);
 
 	if(worst_genome){
@@ -562,6 +563,38 @@ size_t neat_get_species_id(neat_t population, size_t genome_id)
 	}
 
 	return 0;
+}
+
+size_t neat_get_num_species(neat_t population)
+{
+	struct neat_pop *p;
+
+	p = population;
+	assert(p);
+
+	return p->nspecies;
+}
+
+size_t neat_get_num_genomes_in_species(neat_t population, size_t species_id)
+{
+	struct neat_pop *p;
+
+	p = population;
+	assert(p);
+	assert(species_id < p->nspecies);
+
+	return p->species[species_id]->ngenomes;
+}
+
+float neat_get_average_fitness_of_species(neat_t population, size_t species_id)
+{
+	struct neat_pop *p;
+
+	p = population;
+	assert(p);
+	assert(species_id < p->nspecies);
+
+	return p->species[species_id]->avg_fitness;
 }
 
 void neat_print_net(neat_t population, size_t genome_id)

@@ -5,14 +5,17 @@
 
 #include "population.h"
 
-static struct neat_genome *neat_genome_at(struct neat_pop *p, size_t index)
+static struct neat_genome *neat_genome_at(struct neat_pop *p,
+					  struct neat_species *species,
+					  size_t index)
 {
 	struct neat_genome *genome;
 
 	assert(p);
 	assert(index < p->ngenomes);
+	assert(index < species->ngenomes);
 
-	genome = p->genomes[index];
+	genome = p->genomes[species->genomes[index]];
 	assert(genome);
 
 	return genome;
@@ -65,7 +68,7 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 
 	sum_fitness = 0.0f;
 	for(i = 0; i < species->ngenomes; i++){
-		sum_fitness += neat_genome_at(p, species->genomes[i])->fitness;
+		sum_fitness += neat_genome_at(p, species, i)->fitness;
 	}
 
 	species->avg_fitness = sum_fitness / (float)species->ngenomes;
@@ -89,7 +92,7 @@ size_t neat_species_select_genitor(struct neat_pop *p,
 	for(i = 0; i < species->ngenomes; i++){
 		float fitness;
 	
-		fitness = neat_genome_at(p, species->genomes[i])->fitness;
+		fitness = neat_genome_at(p, species, i)->fitness;
 		if(best_fitness < fitness){
 			best_fitness = fitness;
 			best_genome = i;
@@ -125,7 +128,7 @@ size_t neat_species_select_second_genitor(struct neat_pop *p,
 	for(i = 0; i < species->ngenomes; i++){
 		float fitness;
 	
-		fitness = neat_genome_at(p, species->genomes[i])->fitness;
+		fitness = neat_genome_at(p, species, i)->fitness;
 		if(best_fitness < fitness){
 			second_best_fitness = best_fitness;
 			second_best_genome = best_genome;
@@ -153,16 +156,10 @@ size_t neat_species_get_representant(struct neat_species *species)
 void neat_species_add_genome(struct neat_species *species,
 			     size_t genome_id)
 {
-	size_t i;
-
 	assert(species);
 
-	/* Do nothing if the genome is already there */
-	for(i = 0; i < species->ngenomes; i++){
-		if(species->genomes[i] == genome_id){
-			return;
-		}
-	}
+	/* The genome shouldn't be there already */
+	assert(!neat_species_contains_genome(species, genome_id));
 
 	species->genomes[species->ngenomes] = genome_id;
 	species->ngenomes++;
