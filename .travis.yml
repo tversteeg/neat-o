@@ -30,5 +30,6 @@ addons:
       name: "tversteeg/neat-o"
       description: "Build submitted via Travis CI"
     notification_email: thomasversteeg@gmx.com
+    build_command_prepend: "cov-configure --comptype gcc --compiler gcc-4.8"
     build_command:   "make test"
     branch_pattern: coverity_scan
