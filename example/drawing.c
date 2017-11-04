@@ -104,7 +104,7 @@ static void draw_neuron(cairo_t *cr,
 			case NN_ACTIVATION_FAST_SIGMOID:
 				cairo_rectangle(cr,
 						x - radius,
-						y - radius,
+						y - radius / 2,
 						radius * 2,
 						radius);
 				break;
@@ -316,6 +316,18 @@ static void draw_neat_info(cairo_t *cr)
 
 	for(size_t i = 0; i < num_species; i++){
 		size_t species_size = neat_get_num_genomes_in_species(neat, i);
+
+		if(!neat_get_species_is_alive(neat, i)){
+			cairo_move_to(cr, 3, y += 16);
+			sprintf(frame_text,
+				"%d: DEAD, %d",
+				(int)i,
+				(int)species_size);
+			cairo_show_text(cr, frame_text); 
+			cairo_stroke(cr);
+			continue;
+		}
+
 		float fitness = neat_get_average_fitness_of_species(neat, i);
 		cairo_move_to(cr, 3, y += 16);
 		sprintf(frame_text,

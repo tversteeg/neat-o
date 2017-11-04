@@ -15,6 +15,10 @@ struct neat_config{
 	size_t population_size;
 	size_t minimum_time_before_replacement;
 
+	/* Species */
+	size_t species_stagnation_treshold;
+	size_t species_stagnations_allowed;
+
 	/* Species Crossover */
 	float species_crossover_probability;
 	float interspecies_crossover_probability;
@@ -54,5 +58,6 @@ size_t neat_get_species_id(neat_t population, size_t genome_id);
 size_t neat_get_num_species(neat_t population);
 size_t neat_get_num_genomes_in_species(neat_t population, size_t species_id);
 float neat_get_average_fitness_of_species(neat_t population, size_t species_id);
+bool neat_get_species_is_alive(neat_t population, size_t species_id);
 
 void neat_print_net(neat_t population, size_t genome_id);

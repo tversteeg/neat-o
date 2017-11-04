@@ -30,6 +30,11 @@ struct neat_species *neat_species_create(struct neat_config config)
 	species = calloc(1, sizeof(struct neat_species));
 	assert(species);
 
+	/* We start new species as active ones because we assert that they will
+	 * be filled with at least one genome
+	 */
+	species->active = true;
+
 	/* Create all the genomes but don't use them yet, so we don't have
 	 * to resize the array when species gets added or removed
 	 */
@@ -73,7 +78,46 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 
 	species->avg_fitness = sum_fitness / (float)species->ngenomes;
 
+	/* Update the maximum average fitness */
+	if(species->max_avg_fitness < species->avg_fitness){
+		species->max_avg_fitness = species->avg_fitness;
+		species->generation_with_max_fitness = species->generation;
+	}
+
 	return species->avg_fitness;
+}
+
+bool neat_species_cull(struct neat_pop *p, struct neat_species *species)
+{
+	size_t times_stagnated, max_gen, gen;
+
+	assert(p);
+	assert(species);
+
+	if(!species->active){
+		return true;
+	}
+
+	/* Cull if there hasn't been any improvements in the fitness for some
+	 * generations and this happened multiple times
+	 */
+	max_gen = species->generation_with_max_fitness;
+	gen = species->generation;
+	if(gen - max_gen > p->conf.species_stagnation_treshold){
+		times_stagnated = ++species->times_stagnated;
+		if(times_stagnated > p->conf.species_stagnations_allowed){
+			/* The maximum amount of stagnations is reached now */
+			species->active = false;
+
+			return true;
+		}else{
+			/* TODO repopulate the species here */
+		}
+	}
+
+	/* TODO cull weak species */
+
+	return false;
 }
 
 size_t neat_species_select_genitor(struct neat_pop *p,
@@ -163,6 +207,11 @@ void neat_species_add_genome(struct neat_species *species,
 
 	species->genomes[species->ngenomes] = genome_id;
 	species->ngenomes++;
+
+	/* Reset the generation counter */
+	species->max_avg_fitness = 0.0f;
+	species->generation = 0;
+	species->generation_with_max_fitness = 0;
 }
 
 bool neat_species_remove_genome_if_exists(struct neat_species *species,

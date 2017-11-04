@@ -131,11 +131,11 @@ static int neat_sort_species_compare(const void *a, const void *b)
 	s1_fitness = s1->avg_fitness;
 	s2_fitness = s2->avg_fitness;
 
-	/* Sort from low to high */
+	/* Sort from high to low */
 	if(s1_fitness < s2_fitness){
-		return -1;
-	}else if(s1_fitness > s2_fitness){
 		return 1;
+	}else if(s1_fitness > s2_fitness){
+		return -1;
 	}else{
 		return 0;
 	}
@@ -152,18 +152,37 @@ static bool neat_find_worst_genome(struct neat_pop *p, size_t *worst_genome)
 
 	found_worst = false;
 
+	/* First look if there are still dead species */
+	for(i = 0; i < p->nspecies; i++){
+		struct neat_species *species;
+
+		species = p->species[i];
+
+		if(!species->active){
+			/* Just select the first genome in the species,
+			 * because when it will be removed the array will be
+			 * automatically slided left
+			 */
+			*worst_genome = species->genomes[0];
+			return true;
+		}
+	}
+
+	/* Then check the rest, we go back so the same genome won't be chose
+	 * if there are only dead species
+	 */
 	worst_fitness = FLT_MAX;
-	for(i = 0; i < p->ngenomes; i++){
+	for(i = p->ngenomes; i > 0; i--){
 		struct neat_genome *genome;
 		float fitness;
 
-		genome = p->genomes[i];
+		genome = p->genomes[i - 1];
 
 		/* Find the genome with the lowest adjusted fitness */
-		fitness = neat_adjusted_genome_fitness(p, i);
+		fitness = neat_adjusted_genome_fitness(p, i - 1);
 		if(fitness < worst_fitness &&
 		   genome->time_alive > p->conf.genome_minimum_ticks_alive){
-			*worst_genome = i;
+			*worst_genome = i - 1;
 			worst_fitness = fitness;
 			found_worst = true;
 		}
@@ -195,44 +214,125 @@ static void neat_update_all_species_averages(struct neat_pop *p)
 	assert(p);
 
 	for(i = 0; i < p->nspecies; i++){
+		/* Update the generation of the species, this is used in
+		 * the next function
+		 * TODO make separate functions for this
+		 */
+		p->species[i]->generation++;
 		neat_species_update_average_fitness(p, p->species[i]);
 	}
 }
 
-static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
+static void neat_cull_species(struct neat_pop *p)
 {
-	struct neat_genome *genome;
-	struct neat_species *new;
-	float compatibility_treshold;
 	size_t i;
 
 	assert(p);
+
+	/* We walk backward so the iterator won't be ruined when species
+	 * will be removed
+	 */
+	for(i = p->nspecies; i > 0; i--){
+		struct neat_species *species;
+		
+		species = p->species[i - 1];
+		assert(species);
+
+		neat_species_cull(p, species);
+	}
+}
+
+static bool neat_add_genome_to_elligible_species(struct neat_pop *p,
+						 size_t genome_id)
+{
+	struct neat_genome *genome;
+	float compatibility_treshold;
+	size_t i, *elligible_species, elligible_count;
+
+	assert(p);
+
+	/* Create a list of random id's where we can loop through, this
+	 * makes sure the species are not selected in the same order and thus
+	 * the same species won't fill up if they are compatible
+	 */
+	elligible_species = malloc(sizeof(size_t) * p->nspecies);
+	assert(elligible_species);
+
+	/* First fill the array if the species are elligible */
+	elligible_count = 0;
+	for(i = 0; i < p->nspecies; i++){
+		if(p->species[i]->avg_fitness > 0.0f){
+			elligible_species[elligible_count++] = i;
+		}
+	}
+
+	/* If there are no elligible species create a new one */
+	if(elligible_count == 0){
+		free(elligible_species);
+		return false;
+	}
+
+	/* Then shuffle it randomly */
+	for(i = 0; i < elligible_count - 1; i++){
+		size_t j, tmp;
+
+		/* Select a next random item starting from the current
+		 * position
+		 */
+		j = i + rand() / (RAND_MAX / (elligible_count - i) + 1);
+
+		/* Swap the selected item with the current one */
+		tmp = elligible_species[j];
+		elligible_species[j] = elligible_species[i];
+		elligible_species[i] = tmp;
+	}
 
 	genome = p->genomes[genome_id];
 	compatibility_treshold = p->conf.genome_compatibility_treshold;
 
 	/* Add genome to species if the representant matches the genome */
-	for(i = 0; i < p->nspecies; i++){
-		size_t id;
+	for(i = 0; i < elligible_count; i++){
+		size_t j, rep_id;
 		struct neat_genome *species_representant;
 
-		/* All empty species should be removed at this point */
-		assert(p->species[i]->ngenomes > 0);
+		j = elligible_species[i];
 
-		id = neat_species_get_representant(p->species[i]);
-		species_representant = p->genomes[id];
+		/* All empty species should be removed at this point */
+		assert(p->species[j]->ngenomes > 0);
+
+		rep_id = neat_species_get_representant(p->species[j]);
+		species_representant = p->genomes[rep_id];
 		if(neat_genome_is_compatible(genome,
 					     species_representant,
 					     compatibility_treshold,
 					     p->nspecies)){
-			neat_species_add_genome(p->species[i], genome_id);
-			return;
+			neat_species_add_genome(p->species[j], genome_id);
+			
+			/* Cleanup */
+			free(elligible_species);
+			return true;
 		}
 	}
 
-	/* If no matching species could be found create a new species */
-	new = neat_create_new_species(p, false);
-	neat_species_add_genome(new, genome_id);
+	/* No compatible species found */
+	free(elligible_species);
+	return false;
+}
+
+static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
+{
+	struct neat_species *new;
+
+	assert(p);
+	assert(p->nspecies > 0);
+
+	if(!neat_add_genome_to_elligible_species(p, genome_id)){
+		/* If no matching species could be found create a
+		 * new species
+		 */
+		new = neat_create_new_species(p, false);
+		neat_species_add_genome(new, genome_id);
+	}
 }
 
 static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
@@ -245,7 +345,8 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 	assert(s);
 
 	random = (float)rand() / (float)RAND_MAX;
-	if(random < p->conf.interspecies_crossover_probability){
+	/* TODO fix interspecies crossover not ignoring inactive species */
+	if(random < p->conf.interspecies_crossover_probability && false){
 		size_t species_index;
 		struct neat_species *random_species;
 
@@ -259,7 +360,9 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 		 */
 		if(random_species == s){
 			/* We can't move the index lower than 0 so select 1
-			 * if it's 0 or take a lower one if it's higher than 0
+			 * if it's 0 or take a lower one if it's higher than 0.
+			 * We don't care about moving the actual index because
+			 * it's not used after this
 			 */
 			if(species_index == 0){
 				random_species = p->species[species_index + 1];
@@ -334,6 +437,8 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 
 	neat_update_all_species_averages(p);
 
+	neat_cull_species(p);
+
 	/* Sort species on fitness */
 	qsort(p->species,
 	      p->nspecies,
@@ -386,9 +491,16 @@ static void neat_reproduce(struct neat_pop *p, size_t worst_genome)
 
 struct neat_config neat_get_default_config(void)
 {
-	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	/* TODO make it pretty, now it's not the most
+	 * pretty way to initialize it
+	 */
+	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0};
 
 	conf.minimum_time_before_replacement = 10;
+
+	conf.species_stagnation_treshold = 20;
+	conf.species_stagnations_allowed = 2;
 
 	conf.species_crossover_probability = 0.5;
 	conf.interspecies_crossover_probability = 0.1;
@@ -482,10 +594,8 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	p = population;
 	assert(p);
 
-	p->ticks++;
-
 	/* Wait for the set amount of ticks until a replacement occurs */
-	if(p->ticks % p->conf.minimum_time_before_replacement != 0){
+	if(++p->ticks % p->conf.minimum_time_before_replacement != 0){
 		return false;
 	}
 
@@ -595,6 +705,17 @@ float neat_get_average_fitness_of_species(neat_t population, size_t species_id)
 	assert(species_id < p->nspecies);
 
 	return p->species[species_id]->avg_fitness;
+}
+
+bool neat_get_species_is_alive(neat_t population, size_t species_id)
+{
+	struct neat_pop *p;
+
+	p = population;
+	assert(p);
+	assert(species_id < p->nspecies);
+
+	return p->species[species_id]->active;
 }
 
 void neat_print_net(neat_t population, size_t genome_id)
