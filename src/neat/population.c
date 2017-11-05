@@ -1,7 +1,58 @@
 #include "population.h"
 
+#include <stdint.h>
 #include <float.h>
 #include <assert.h>
+
+static size_t neat_random_eligible_species_list(struct neat_pop *p,
+						size_t **eligible_list)
+{
+	size_t i, eligible_count, *list;
+
+	assert(p);
+	assert(eligible_list);
+
+	*eligible_list = malloc(sizeof(size_t) * p->nspecies);
+	assert(*eligible_list);
+
+	list = *eligible_list;
+
+	/* First fill the array if the species are eligible */
+	eligible_count = 0;
+	for(i = 0; i < p->nspecies; i++){
+		if(p->species[i]->active){
+			list[eligible_count++] = i;
+		}
+	}
+
+	/* If there are no eligible species create a new one */
+	if(eligible_count == 0){
+		free(list);
+		*eligible_list = NULL;
+
+		return 0;
+	}
+
+	/* Then shuffle it randomly */
+	for(i = 0; i < eligible_count - 1; i++){
+		size_t j, tmp;
+
+		/* Select a next random item starting from the current
+		 * position
+		 */
+		j = i + rand() / (RAND_MAX / (eligible_count - i) + 1);
+
+		/* Swap the selected zitem with the current one */
+		tmp = list[j];
+		list[j] = list[i];
+		list[i] = tmp;
+	}
+
+	/* Resize the list to remove unneeded items */
+	*eligible_list = realloc(list, sizeof(size_t) * eligible_count);
+
+	return eligible_count;
+}
 
 static void neat_reset_genomes(struct neat_pop *p)
 {
@@ -168,8 +219,8 @@ static bool neat_find_worst_genome(struct neat_pop *p, size_t *worst_genome)
 		}
 	}
 
-	/* Then check the rest, we go back so the same genome won't be chose
-	 * if there are only dead species
+	/* Finally check the rest, we iterate back so the same genome won't be
+	 * chosen when there are only dead species
 	 */
 	worst_fitness = FLT_MAX;
 	for(i = p->ngenomes; i > 0; i--){
@@ -207,6 +258,17 @@ static float neat_get_total_fitness_average(struct neat_pop *p)
 	return total_avg;
 }
 
+static void neat_increase_all_species_generations(struct neat_pop *p)
+{
+	size_t i;
+
+	assert(p);
+
+	for(i = 0; i < p->nspecies; i++){
+		neat_species_increase_generation(p->species[i]);
+	}
+}
+
 static void neat_update_all_species_averages(struct neat_pop *p)
 {
 	size_t i;
@@ -214,11 +276,6 @@ static void neat_update_all_species_averages(struct neat_pop *p)
 	assert(p);
 
 	for(i = 0; i < p->nspecies; i++){
-		/* Update the generation of the species, this is used in
-		 * the next function
-		 * TODO make separate functions for this
-		 */
-		p->species[i]->generation++;
 		neat_species_update_average_fitness(p, p->species[i]);
 	}
 }
@@ -242,6 +299,61 @@ static void neat_cull_species(struct neat_pop *p)
 	}
 }
 
+static void neat_remove_duplicate_species(struct neat_pop *p)
+{
+	size_t i, compatibility_treshold;
+
+	assert(p);
+
+	compatibility_treshold = p->conf.genome_compatibility_treshold;
+
+	for(i = 0; i < p->nspecies; i++){
+		struct neat_species *s1;
+		size_t j;
+
+		s1 = p->species[i];
+
+		/* Ignore all the dead species */
+		if(!s1->active){
+			continue;
+		}
+
+		for(j = i + 1; j < p->nspecies; j++){
+			struct neat_species *s2;
+			struct neat_genome *r1, *r2;
+
+			s2 = p->species[j];
+			
+			/* Ignore the dead species */
+			if(!s2->active){
+				continue;
+			}
+
+			/* Remove all the species where the representants are 
+			 * compatible
+			 */
+			/* TODO make this more safe */
+			r1 = p->genomes[neat_species_get_representant(s1)];
+			r2 = p->genomes[neat_species_get_representant(s2)];
+
+			if(!neat_genome_is_compatible(r1,
+						     r2,
+						     compatibility_treshold,
+						     p->nspecies)){
+				continue;
+			}
+
+			/* Keep the species with the highest fitness */
+			if(s1->avg_fitness > s2->avg_fitness){
+				s2->active = false;
+			}else{
+				s1->active = false;
+				break;
+			}
+		}
+	}
+}
+
 static bool neat_add_genome_to_eligible_species(struct neat_pop *p,
 						size_t genome_id)
 {
@@ -255,37 +367,13 @@ static bool neat_add_genome_to_eligible_species(struct neat_pop *p,
 	 * makes sure the species are not selected in the same order and thus
 	 * the same species won't fill up if they are compatible
 	 */
-	eligible_species = malloc(sizeof(size_t) * p->nspecies);
-	assert(eligible_species);
-
-	/* First fill the array if the species are eligible */
-	eligible_count = 0;
-	for(i = 0; i < p->nspecies; i++){
-		if(p->species[i]->avg_fitness > 0.0f){
-			eligible_species[eligible_count++] = i;
-		}
-	}
-
-	/* If there are no eligible species create a new one */
+	eligible_species = NULL;
+	eligible_count = neat_random_eligible_species_list(p,
+							   &eligible_species);
 	if(eligible_count == 0){
-		free(eligible_species);
 		return false;
 	}
-
-	/* Then shuffle it randomly */
-	for(i = 0; i < eligible_count - 1; i++){
-		size_t j, tmp;
-
-		/* Select a next random item starting from the current
-		 * position
-		 */
-		j = i + rand() / (RAND_MAX / (eligible_count - i) + 1);
-
-		/* Swap the selected item with the current one */
-		tmp = eligible_species[j];
-		eligible_species[j] = eligible_species[i];
-		eligible_species[i] = tmp;
-	}
+	assert(eligible_species);
 
 	genome = p->genomes[genome_id];
 	compatibility_treshold = p->conf.genome_compatibility_treshold;
@@ -302,6 +390,13 @@ static bool neat_add_genome_to_eligible_species(struct neat_pop *p,
 
 		rep_id = neat_species_get_representant(p->species[j]);
 		species_representant = p->genomes[rep_id];
+
+		/* Add the genome to the species if it's compatible,
+		 * compatibility is checked with a treshold which is again
+		 * influenced by the number of species that exist, more
+		 * species means a bigger chance of compatibility which means
+		 * less new species (and the other way around as well)
+		 */
 		if(neat_genome_is_compatible(genome,
 					     species_representant,
 					     compatibility_treshold,
@@ -327,7 +422,7 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 	assert(p->nspecies > 0);
 
 	if(!neat_add_genome_to_eligible_species(p, genome_id)){
-		/* If no matching species could be found create a
+		/* If no matching eligible species could be found create a
 		 * new species
 		 */
 		new = neat_create_new_species(p, false);
@@ -335,47 +430,62 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 	}
 }
 
+static struct neat_species *neat_interspecies_species(struct neat_pop *p,
+						      struct neat_species *s)
+{
+	size_t i, eligible_count, *eligible_species;
+
+	eligible_species = NULL;
+	eligible_count = neat_random_eligible_species_list(p,
+							   &eligible_species);
+	if(eligible_count == 0){
+		return NULL;
+	}
+	assert(eligible_species);
+
+	for(i = 0; i < eligible_count; i++){
+		struct neat_species *s2 = p->species[eligible_species[i]];
+		assert(s2);
+
+		/* Parent2 cannot be the same as parent1 */
+		if(s2 != s){
+			return s2;
+		}
+	}
+
+	/* No eligible parent found */
+	return NULL;
+}
+
 static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 						      struct neat_species *s)
 {
 	float random;
 	size_t genitor;
+	struct neat_species *parent2_species;
 
 	assert(p);
 	assert(s);
 
+	genitor = SIZE_MAX;
+
 	random = (float)rand() / (float)RAND_MAX;
 	/* TODO fix interspecies crossover not ignoring inactive species */
 	if(random < p->conf.interspecies_crossover_probability && false){
-		size_t species_index;
-		struct neat_species *random_species;
-
-		/* Select a random other species */
-		species_index = rand() % p->nspecies;
-		random_species = p->species[species_index];
-		assert(random_species);
-
-		/* We don't want to do interspecies crossover on the same
-		 * species, so get the species next to it
-		 */
-		if(random_species == s){
-			/* We can't move the index lower than 0 so select 1
-			 * if it's 0 or take a lower one if it's higher than 0.
-			 * We don't care about moving the actual index because
-			 * it's not used after this
+		parent2_species = neat_interspecies_species(p, s);
+		if(parent2_species != NULL){
+			/* Get the best genome from the randomly selected
+			 * species
 			 */
-			if(species_index == 0){
-				random_species = p->species[species_index + 1];
-			}else{
-				random_species = p->species[species_index - 1];
-			}
+			genitor = neat_species_select_genitor(p,
+							      parent2_species);
 		}
-
-		assert(random_species->ngenomes > 0);
-
-		/* Get the best genome from the randomly selected species */
-		genitor = neat_species_select_genitor(p, random_species);
-	}else{
+	}
+	
+	/* If there is no interspecies crossover or if no suitable species
+	 * could be found
+	 */
+	if(genitor == SIZE_MAX){
 		/* Get the second best one if there is only 1 species (so that
 		 * would be the first) or if there is a non-interspecies
 		 * crossover
@@ -416,10 +526,7 @@ static void neat_crossover(struct neat_pop *p,
 		child = neat_genome_copy(parent);
 	}
 
-	random = (float)rand() / (float)RAND_MAX;
-	if(random < p->conf.mutate_species_crossover_probability){
-		neat_genome_mutate(child, p->conf, p->innovation);
-	}
+	neat_genome_mutate(child, p->conf, p->innovation);
 
 	/* Reset the time alive for the child */
 	child->time_alive = 0;
@@ -494,23 +601,22 @@ struct neat_config neat_get_default_config(void)
 	/* TODO make it pretty, now it's not the most
 	 * pretty way to initialize it
 	 */
-	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0};
 
 	conf.minimum_time_before_replacement = 10;
 
-	conf.species_stagnation_treshold = 20;
+	conf.species_stagnation_treshold = 100;
 	conf.species_stagnations_allowed = 2;
 
-	conf.species_crossover_probability = 0.5;
-	conf.interspecies_crossover_probability = 0.1;
-	conf.mutate_species_crossover_probability = 0.5;
+	conf.species_crossover_probability = 0.6;
+	conf.interspecies_crossover_probability = 0.2;
 
 	conf.genome_add_neuron_mutation_probability = 0.1;
 	conf.genome_add_link_mutation_probability = 0.3;
 	conf.genome_change_activation_probability = 0.1;
 	conf.genome_weight_mutation_probability = 0.5;
-	conf.genome_all_weights_mutation_probability = 0.01;
+	conf.genome_all_weights_mutation_probability = 0.02;
 
 	conf.genome_minimum_ticks_alive = 100;
 	conf.genome_compatibility_treshold = 0.2;
@@ -600,6 +706,17 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	}
 
 	p->innovation++;
+
+	/* Increment the generation counter on each species so later it can
+	 * be checked if it needs to be culled
+	 */
+	neat_increase_all_species_generations(p);
+
+	/* Update all the averages so the worst genome can be found */
+	neat_update_all_species_averages(p);
+
+	/* Remove species where the fitness is exactly the same */
+	neat_remove_duplicate_species(p);
 
 	worst_found_genome = 0;
 	if(!neat_find_worst_genome(p, &worst_found_genome)){

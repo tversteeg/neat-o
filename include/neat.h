@@ -22,7 +22,6 @@ struct neat_config{
 	/* Species Crossover */
 	float species_crossover_probability;
 	float interspecies_crossover_probability;
-	float mutate_species_crossover_probability;
 
 	/* Genome Mutation */
 	float genome_add_neuron_mutation_probability;

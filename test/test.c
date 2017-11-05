@@ -38,6 +38,7 @@ TEST neat_xor(void)
 	neat_t neat;
 	struct neat_config config;
 	size_t i;
+	float max_fitness;
 
 	config = neat_get_default_config();
 	config.network_inputs = 2;
@@ -54,13 +55,15 @@ TEST neat_xor(void)
 	/* We only rarely want to add another nouron because a XOR network
 	 * should work just fine with 1 hidden layer
 	 */
-	config.genome_add_neuron_mutation_probability = 0.02;
+	config.genome_add_neuron_mutation_probability = 0.01;
 
 	neat = neat_create(config);
 	ASSERT(neat);
 
+	max_fitness = 0.0f;
+
 	/* Epochs */
-	for(i = 0; i < 10000; i++){
+	for(i = 0; i < 100000; i++){
 		size_t j;
 
 		/* Organisms */
@@ -93,6 +96,10 @@ TEST neat_xor(void)
 				PASSm(message);
 			}
 
+			if(fitness > max_fitness){
+				max_fitness = fitness;
+			}
+
 			neat_set_fitness(neat, j, fitness);
 
 			neat_increase_time_alive(neat, j);
@@ -102,7 +109,7 @@ TEST neat_xor(void)
 	}
 
 	neat_destroy(neat);
-	printf("Iterations: %d\n", (int)i);
+	printf("Iterations: %d, fitness: %g\n", (int)i, max_fitness);
 	FAILm("A mutation that solved the xor problem did not occur");
 }
 

@@ -114,10 +114,10 @@ static void draw_neuron(cairo_t *cr,
 		}
 	}
 	if(value < 0.0){
-		float converted_value = 1.0 + value / 2.0;
+		float converted_value = 1.0 + value;
 		cairo_set_source_rgb(cr, 1.0, converted_value, converted_value);
 	}else{
-		cairo_set_source_rgb(cr, 1.0, value / 2.0, 1.0);
+		cairo_set_source_rgb(cr, 1.0, value, 1.0);
 	}
 	cairo_fill_preserve(cr);
 	cairo_restore(cr);
@@ -133,13 +133,13 @@ static void draw_weight(cairo_t *cr,
 {
 	cairo_save(cr);
 	if(value < 0.001 && value > -0.001){
-		cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
+		cairo_set_source_rgb(cr, 0.5, 0.5, 0.5);
 	}else if(value < 0.0){
 		value = 1.0 + value / 2.0;
 		cairo_set_source_rgb(cr, value, 1.0, value);
 	}else{
 		value = value / 2.0;
-		cairo_set_source_rgb(cr, value, value, value);
+		cairo_set_source_rgb(cr, 1.0, value, value);
 	}
 	cairo_move_to (cr, startx, starty);
 	cairo_line_to (cr, endx, endy);
@@ -516,13 +516,13 @@ int main(int argc, char *argv[])
 	/* Genomes don't have to survive for very long because their survival
 	 * state is determined in 1 tick
 	 */
-	config.genome_minimum_ticks_alive = 1;
+	config.genome_minimum_ticks_alive = 50;
 	config.minimum_time_before_replacement = 1;
 
 	/* We only rarely want to add another nouron because a XOR network
 	 * should work just fine with 1 hidden layer
 	 */
-	config.genome_add_neuron_mutation_probability = 0.02;
+	config.genome_add_neuron_mutation_probability = 0.01;
 
 	srand(time(NULL));
 

@@ -25,6 +25,7 @@ float neat_species_get_adjusted_fitness(struct neat_species *species,
 					float fitness);
 float neat_species_update_average_fitness(struct neat_pop *p,
 					  struct neat_species *species);
+void neat_species_increase_generation(struct neat_species *species);
 
 /* Disable the species based on the number of stagnations and on weakness of
  * the species (amount of genomes)

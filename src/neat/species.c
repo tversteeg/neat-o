@@ -92,6 +92,10 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 	assert(p);
 	assert(species);
 
+	if(!species->active){
+		return 0.0f;
+	}
+
 	sum_fitness = 0.0f;
 	for(i = 0; i < species->ngenomes; i++){
 		sum_fitness += neat_genome_at(p, species, i)->fitness;
@@ -106,6 +110,13 @@ float neat_species_update_average_fitness(struct neat_pop *p,
 	}
 
 	return species->avg_fitness;
+}
+
+void neat_species_increase_generation(struct neat_species *species)
+{
+	assert(species);
+
+	species->generation++;
 }
 
 bool neat_species_cull(struct neat_pop *p, struct neat_species *species)
@@ -197,7 +208,7 @@ size_t neat_species_select_second_genitor(struct neat_pop *p,
 		float fitness;
 	
 		fitness = neat_genome_at(p, species, i)->fitness;
-		if(best_fitness < fitness){
+		if(best_fitness <= fitness){
 			second_best_fitness = best_fitness;
 			second_best_genome = best_genome;
 
