@@ -21,6 +21,27 @@ static struct neat_genome *neat_genome_at(struct neat_pop *p,
 	return genome;
 }
 
+static void neat_repopulate_species(struct neat_pop *p,
+				    struct neat_species *species)
+{
+	size_t i;
+	struct neat_genome *first;
+
+	assert(p);
+	assert(species);
+
+	first = p->genomes[species->genomes[0]];
+
+	/* Copy the first genome */
+	for(i = 1; i < species->ngenomes; i++){
+		size_t genome_id;
+
+		genome_id = species->genomes[i];
+		neat_genome_destroy(p->genomes[genome_id]);
+		p->genomes[genome_id] = neat_genome_copy(first);
+	}
+}
+
 struct neat_species *neat_species_create(struct neat_config config)
 {
 	struct neat_species *species;
@@ -111,7 +132,10 @@ bool neat_species_cull(struct neat_pop *p, struct neat_species *species)
 
 			return true;
 		}else{
-			/* TODO repopulate the species here */
+			species->generation_with_max_fitness = gen;
+			species->max_avg_fitness = 0.0f;
+
+			neat_repopulate_species(p, species);
 		}
 	}
 

@@ -121,7 +121,7 @@ static int neat_sort_species_compare(const void *a, const void *b)
 {
 	float s1_fitness, s2_fitness;
 	struct neat_species *s1, *s2;
-		
+
 	s1 = *(struct neat_species**)a;
 	s2 = *(struct neat_species**)b;
 
@@ -234,7 +234,7 @@ static void neat_cull_species(struct neat_pop *p)
 	 */
 	for(i = p->nspecies; i > 0; i--){
 		struct neat_species *species;
-		
+
 		species = p->species[i - 1];
 		assert(species);
 
@@ -242,12 +242,12 @@ static void neat_cull_species(struct neat_pop *p)
 	}
 }
 
-static bool neat_add_genome_to_elligible_species(struct neat_pop *p,
-						 size_t genome_id)
+static bool neat_add_genome_to_eligible_species(struct neat_pop *p,
+						size_t genome_id)
 {
 	struct neat_genome *genome;
 	float compatibility_treshold;
-	size_t i, *elligible_species, elligible_count;
+	size_t i, *eligible_species, eligible_count;
 
 	assert(p);
 
@@ -255,47 +255,47 @@ static bool neat_add_genome_to_elligible_species(struct neat_pop *p,
 	 * makes sure the species are not selected in the same order and thus
 	 * the same species won't fill up if they are compatible
 	 */
-	elligible_species = malloc(sizeof(size_t) * p->nspecies);
-	assert(elligible_species);
+	eligible_species = malloc(sizeof(size_t) * p->nspecies);
+	assert(eligible_species);
 
-	/* First fill the array if the species are elligible */
-	elligible_count = 0;
+	/* First fill the array if the species are eligible */
+	eligible_count = 0;
 	for(i = 0; i < p->nspecies; i++){
 		if(p->species[i]->avg_fitness > 0.0f){
-			elligible_species[elligible_count++] = i;
+			eligible_species[eligible_count++] = i;
 		}
 	}
 
-	/* If there are no elligible species create a new one */
-	if(elligible_count == 0){
-		free(elligible_species);
+	/* If there are no eligible species create a new one */
+	if(eligible_count == 0){
+		free(eligible_species);
 		return false;
 	}
 
 	/* Then shuffle it randomly */
-	for(i = 0; i < elligible_count - 1; i++){
+	for(i = 0; i < eligible_count - 1; i++){
 		size_t j, tmp;
 
 		/* Select a next random item starting from the current
 		 * position
 		 */
-		j = i + rand() / (RAND_MAX / (elligible_count - i) + 1);
+		j = i + rand() / (RAND_MAX / (eligible_count - i) + 1);
 
 		/* Swap the selected item with the current one */
-		tmp = elligible_species[j];
-		elligible_species[j] = elligible_species[i];
-		elligible_species[i] = tmp;
+		tmp = eligible_species[j];
+		eligible_species[j] = eligible_species[i];
+		eligible_species[i] = tmp;
 	}
 
 	genome = p->genomes[genome_id];
 	compatibility_treshold = p->conf.genome_compatibility_treshold;
 
 	/* Add genome to species if the representant matches the genome */
-	for(i = 0; i < elligible_count; i++){
+	for(i = 0; i < eligible_count; i++){
 		size_t j, rep_id;
 		struct neat_genome *species_representant;
 
-		j = elligible_species[i];
+		j = eligible_species[i];
 
 		/* All empty species should be removed at this point */
 		assert(p->species[j]->ngenomes > 0);
@@ -307,15 +307,15 @@ static bool neat_add_genome_to_elligible_species(struct neat_pop *p,
 					     compatibility_treshold,
 					     p->nspecies)){
 			neat_species_add_genome(p->species[j], genome_id);
-			
+
 			/* Cleanup */
-			free(elligible_species);
+			free(eligible_species);
 			return true;
 		}
 	}
 
 	/* No compatible species found */
-	free(elligible_species);
+	free(eligible_species);
 	return false;
 }
 
@@ -326,7 +326,7 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 	assert(p);
 	assert(p->nspecies > 0);
 
-	if(!neat_add_genome_to_elligible_species(p, genome_id)){
+	if(!neat_add_genome_to_eligible_species(p, genome_id)){
 		/* If no matching species could be found create a
 		 * new species
 		 */
@@ -505,7 +505,7 @@ struct neat_config neat_get_default_config(void)
 	conf.species_crossover_probability = 0.5;
 	conf.interspecies_crossover_probability = 0.1;
 	conf.mutate_species_crossover_probability = 0.5;
-	
+
 	conf.genome_add_neuron_mutation_probability = 0.1;
 	conf.genome_add_link_mutation_probability = 0.3;
 	conf.genome_change_activation_probability = 0.1;
@@ -517,7 +517,7 @@ struct neat_config neat_get_default_config(void)
 
 	conf.genome_default_hidden_activation = NN_ACTIVATION_RELU;
 	conf.genome_default_output_activation = NN_ACTIVATION_SIGMOID;
-	
+
 	return conf;
 }
 
