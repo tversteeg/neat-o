@@ -633,10 +633,13 @@ struct neat_config neat_get_default_config(void)
 	conf.interspecies_crossover_probability = 0.2;
 
 	conf.genome_add_neuron_mutation_probability = 0.1;
+	/*
+	conf.genome_add_neuron_mutation_probability = 0.1;
 	conf.genome_add_link_mutation_probability = 0.3;
 	conf.genome_change_activation_probability = 0.1;
 	conf.genome_weight_mutation_probability = 0.5;
 	conf.genome_all_weights_mutation_probability = 0.02;
+	*/
 
 	conf.genome_minimum_ticks_alive = 100;
 	conf.genome_compatibility_treshold = 0.2;
@@ -776,11 +779,20 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 		*worst_genome = worst_found_genome;
 	}
 
-	if(respeciate){
-		neat_respeciate_genomes(p);
+	/* Check the amount of species again because removal and 
+	 * reproduction might have changed the amount of species
+	 */
+	if(nspecies != p->nspecies){
+		/* Respeciate only with an interval defined in the config */
+		reassignment_ticks = p->conf.species_ticks_before_reassignment;
+		respeciate = reassignment_ticks >= p->reassignment_ticks;
 
-		/* Reset respeciation timer */
-		p->reassignment_ticks = 0;
+		if(respeciate){
+			neat_respeciate_genomes(p);
+
+			/* Reset respeciation timer */
+			p->reassignment_ticks = 0;
+		}
 	}
 
 	return true;

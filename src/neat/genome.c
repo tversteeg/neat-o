@@ -281,6 +281,8 @@ struct neat_genome *neat_genome_create(struct neat_config config,
 
 	nn_ffnet_randomize(genome->net);
 
+	nn_ffnet_set_bias(genome->net, -1.0f);
+
 	neat_genome_allocate_innovations(genome, innovation);
 	for(i = 0; i < genome->ninnov_weights; i++){
 		genome->innov_weight[i] = innovation;

@@ -13,12 +13,12 @@ static struct neat_config config;
 static neat_t neat = NULL;
 
 static float xor_inputs[4][2] = {
-	{-1.0f, -1.0f},
-	{-1.0f, 1.0f},
-	{1.0f, -1.0f},
+	{0.0f, 0.0f},
+	{0.0f, 1.0f},
+	{1.0f, 0.0f},
 	{1.0f, 1.0f}
 };
-static float xor_outputs[4] = {-1.0f, 1.0f, 1.0f, -1.0f};
+static float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 
 /* Demo specific declarations */
 static guint thread;
@@ -30,6 +30,9 @@ static size_t frame = 0;
 static size_t worst = SIZE_MAX, best = SIZE_MAX;
 static guint renderx = 1, rendery = 1;
 static guint rendertick = 0;
+
+/* TODO remove */
+static struct nn_ffnet *net;
 
 static void setup_neat(void)
 {
@@ -183,7 +186,12 @@ static void draw_neat_network(cairo_t *cr,
 	cairo_show_text(cr, text); 
 	cairo_stroke(cr);
 
-	const struct nn_ffnet *n = neat_get_network(neat, network);
+	const struct nn_ffnet *n;
+	if(network != 0){
+		n = neat_get_network(neat, network);
+	}else{
+		n = net;
+	}
 
 	float *neuron = n->output;
 	float *weight = n->weight;
@@ -522,7 +530,24 @@ int main(int argc, char *argv[])
 	/* We only rarely want to add another nouron because a XOR network
 	 * should work just fine with 1 hidden layer
 	 */
-	config.genome_add_neuron_mutation_probability = 0.01;
+	//config.genome_add_neuron_mutation_probability = 0.01;
+
+	size_t size = 3;
+	net = nn_ffnet_create(size, size, size, 0);
+	for(size_t i = 0; i < size; i++){
+		net->weight[i * (size + 2) + 1] = 2.0f;
+	}
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	nn_ffnet_set_bias(net, 0.0);
+
+	net = nn_ffnet_add_hidden_layer(net, 2.0f);
+	net = nn_ffnet_add_hidden_layer(net, 2.0f);
+	//TODO fix adding of this layer
+	net = nn_ffnet_add_hidden_layer(net, 2.0f);
 
 	srand(time(NULL));
 

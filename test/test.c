@@ -63,7 +63,7 @@ TEST neat_xor(void)
 	max_fitness = 0.0f;
 
 	/* Epochs */
-	for(i = 0; i < 100000; i++){
+	for(i = 0; i < 10000; i++){
 		size_t j;
 
 		/* Organisms */
@@ -342,7 +342,7 @@ TEST nn_add_layer_single(void)
 	PASS();
 }
 
-TEST nn_add_layer_multi(void)
+TEST nn_add_layer_double(void)
 {
 	struct nn_ffnet *net, *copy;
 	size_t i;
@@ -369,6 +369,55 @@ TEST nn_add_layer_multi(void)
 
 	nn_ffnet_destroy(net);
 	nn_ffnet_destroy(copy);
+	PASS();
+}
+
+TEST nn_add_layer_multi(void *size_data)
+{
+	struct nn_ffnet *net;
+	float *results, *inputs;
+	size_t i, size;
+
+	/* Get the size from the test suite */
+	size = *(size_t*)size_data;
+	ASSERT(size > 0);
+
+	inputs = malloc(sizeof(float) * size);
+	ASSERT(inputs);
+
+	/* Test to see if the output is always passed through properly */
+	net = nn_ffnet_create(size, size, size, 0);
+	ASSERT(net);
+
+	for(i = 0; i < size; i++){
+		inputs[i] = 1.0f;
+
+		/* Set the input -> hidden & hidden -> output layers to 1.0 */
+		net->weight[i * (size + 2) + 1] = 1.0f;
+	}
+
+	nn_ffnet_set_activations(net,
+				 NN_ACTIVATION_RELU,
+				 NN_ACTIVATION_RELU);
+
+	nn_ffnet_set_bias(net, 0.0);
+
+	for(i = 0; i < size; i++){
+		net = nn_ffnet_add_hidden_layer(net, 1.0f);
+	}
+
+	results = nn_ffnet_run(net, inputs);
+	ASSERT(results);
+
+	/* The outputs should be the same as the inputs */
+	for(i = 0; i < size; i++){
+		ASSERT_EQ_FMT(inputs[i], results[i], "%g");
+	}
+
+	nn_ffnet_destroy(net);
+
+	free(inputs);
+
 	PASS();
 }
 
@@ -496,21 +545,25 @@ TEST nn_time_big(void)
 
 SUITE(nn)
 {
-	size_t i;
+	/* Needs to be volatile for a longjmp warning from GCC */
+	volatile size_t i;
 
-	for(i = 0; i < 10; i++){
-		RUN_TEST(nn_create_and_destroy);
-		RUN_TEST(nn_randomize);
-		RUN_TEST(nn_copy_weights);
-		RUN_TEST(nn_copy_neurons);
-		RUN_TEST(nn_neuron_is_connected);
-		RUN_TEST(nn_add_layer_zero);
-		RUN_TEST(nn_add_layer_single);
-		RUN_TEST(nn_add_layer_multi);
-		RUN_TEST(nn_run);
-		RUN_TEST(nn_run_relu);
-		RUN_TEST(nn_run_xor);
+	RUN_TEST(nn_create_and_destroy);
+	RUN_TEST(nn_randomize);
+	RUN_TEST(nn_copy_weights);
+	RUN_TEST(nn_copy_neurons);
+	RUN_TEST(nn_neuron_is_connected);
+	RUN_TEST(nn_add_layer_zero);
+	RUN_TEST(nn_add_layer_single);
+	RUN_TEST(nn_add_layer_double);
+
+	for(i = 1; i <= 10; i++){
+		RUN_TEST1(nn_add_layer_multi, (void*)&i);
 	}
+
+	RUN_TEST(nn_run);
+	RUN_TEST(nn_run_relu);
+	RUN_TEST(nn_run_xor);
 }
 
 SUITE(nn_time)

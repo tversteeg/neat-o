@@ -12,7 +12,7 @@ OBJS=$(SRCS:.c=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS) ${LIB}
-	$(CC) $(LDFLAGS) -o $@ -L. $^ $(LDLIBS) 
+	$(CC) $(LDFLAGS) -o $@ -L. $^ $(LDLIBS)
 
 .PHONY: clean
 clean:

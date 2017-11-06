@@ -3,7 +3,7 @@ LIB=neat.a
 AR=ar rcs
 RANLIB=ranlib
 CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
-       -Wpacked -std=c90 -ansi -pedantic -O3 -Iinclude 
+       -Wpacked -std=c90 -ansi -pedantic -O3 -Iinclude
 LDLIBS=-lm
 
 SRCS=src/nn/nn.c src/neat/population.c src/neat/species.c src/neat/genome.c
