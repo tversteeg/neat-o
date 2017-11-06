@@ -18,6 +18,7 @@ struct neat_config{
 	/* Species */
 	size_t species_stagnation_treshold;
 	size_t species_stagnations_allowed;
+	size_t species_ticks_before_reassignment;
 
 	/* Species Crossover */
 	float species_crossover_probability;

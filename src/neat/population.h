@@ -18,5 +18,5 @@ struct neat_pop{
 
 	int innovation;
 
-	size_t ticks;
+	size_t ticks, reassignment_ticks;
 };

@@ -430,6 +430,25 @@ static void neat_speciate_genome(struct neat_pop *p, size_t genome_id)
 	}
 }
 
+static void neat_respeciate_genomes(struct neat_pop *p)
+{
+	size_t i;
+
+	assert(p);
+
+	for(i = 0; i < p->ngenomes; i++){
+		/* First remove the species, this will have the side effect
+		 * that representants will be shifted in species
+		 * TODO check if that's a problem
+		 */
+		neat_remove_genome_from_species(p, i);
+
+		/* Then assign it to a existing species or create a new species
+		 */
+		neat_speciate_genome(p, i);
+	}
+}
+
 static struct neat_species *neat_interspecies_species(struct neat_pop *p,
 						      struct neat_species *s)
 {
@@ -602,12 +621,13 @@ struct neat_config neat_get_default_config(void)
 	 * pretty way to initialize it
 	 */
 	struct neat_config conf = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0};
+		0, 0, 0, 0, 0};
 
 	conf.minimum_time_before_replacement = 10;
 
 	conf.species_stagnation_treshold = 100;
 	conf.species_stagnations_allowed = 2;
+	conf.species_ticks_before_reassignment = 10;
 
 	conf.species_crossover_probability = 0.6;
 	conf.interspecies_crossover_probability = 0.2;
@@ -695,7 +715,8 @@ const float *neat_run(neat_t population, size_t genome_id, const float *inputs)
 bool neat_epoch(neat_t population, size_t *worst_genome)
 {
 	struct neat_pop *p;
-	size_t worst_found_genome;
+	size_t worst_found_genome, nspecies, reassignment_ticks;
+	bool respeciate;
 
 	p = population;
 	assert(p);
@@ -704,6 +725,9 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	if(++p->ticks % p->conf.minimum_time_before_replacement != 0){
 		return false;
 	}
+
+	/* Cache the variable to track the difference */
+	nspecies = p->nspecies;
 
 	p->innovation++;
 
@@ -718,8 +742,25 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 	/* Remove species where the fitness is exactly the same */
 	neat_remove_duplicate_species(p);
 
+	/* Reassign all the genomes if the compatibility treshold is
+	 * adjusted (which is done by changing the amount of species)
+	 */
+	respeciate = false;
+	if(nspecies != p->nspecies){
+		/* Respeciate only with an interval defined in the config */
+		reassignment_ticks = p->conf.species_ticks_before_reassignment;
+		respeciate = reassignment_ticks >= p->reassignment_ticks++;
+	}
+
 	worst_found_genome = 0;
 	if(!neat_find_worst_genome(p, &worst_found_genome)){
+		if(respeciate){
+			neat_respeciate_genomes(p);
+
+			/* Reset respeciation timer */
+			p->reassignment_ticks = 0;
+		}
+
 		return false;
 	}
 
@@ -733,6 +774,13 @@ bool neat_epoch(neat_t population, size_t *worst_genome)
 
 	if(worst_genome){
 		*worst_genome = worst_found_genome;
+	}
+
+	if(respeciate){
+		neat_respeciate_genomes(p);
+
+		/* Reset respeciation timer */
+		p->reassignment_ticks = 0;
 	}
 
 	return true;

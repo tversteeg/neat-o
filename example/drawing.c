@@ -13,12 +13,12 @@ static struct neat_config config;
 static neat_t neat = NULL;
 
 static float xor_inputs[4][2] = {
-	{0.0f, 0.0f},
-	{0.0f, 1.0f},
-	{1.0f, 0.0f},
+	{-1.0f, -1.0f},
+	{-1.0f, 1.0f},
+	{1.0f, -1.0f},
 	{1.0f, 1.0f}
 };
-static float xor_outputs[4] = {0.0f, 1.0f, 1.0f, 0.0f};
+static float xor_outputs[4] = {-1.0f, 1.0f, 1.0f, -1.0f};
 
 /* Demo specific declarations */
 static guint thread;
@@ -44,7 +44,7 @@ static gboolean tick(gpointer data)
 		for(int k = 0; k < 4; k++){
 			const float *results = neat_run(neat, i, xor_inputs[k]);
 
-			error += MIN(fabs(results[0] - xor_outputs[k]), 1.0f);
+			error += fabs(results[0] - xor_outputs[k]);
 		}
 
 		float fitness = (4.0f - error) / 4.0f;
@@ -66,7 +66,7 @@ static gboolean tick(gpointer data)
 	 * by the size of the network because Cairo is slow at rendering
 	 * a lot of lines
 	 */
-	if(++rendertick > renderx * rendery){
+	if(++rendertick > renderx * rendery + 5){
 		rendertick = 0;
 		gtk_widget_queue_draw(GTK_WIDGET(data));
 	}
