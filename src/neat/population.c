@@ -632,6 +632,7 @@ struct neat_config neat_get_default_config(void)
 	conf.species_crossover_probability = 0.6;
 	conf.interspecies_crossover_probability = 0.2;
 
+	conf.genome_weight_mutation_probability = 1.0;
 	/*
 	conf.genome_add_neuron_mutation_probability = 0.1;
 	conf.genome_add_link_mutation_probability = 0.3;

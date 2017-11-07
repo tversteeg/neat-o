@@ -1,3 +1,7 @@
+/* For catching floating point exceptions */
+#define _GNU_SOURCE 
+#include <fenv.h>
+
 #include <nn.h>
 #include <neat.h>
 
@@ -582,6 +586,9 @@ GREATEST_MAIN_DEFS();
 int main(int argc, char **argv)
 {
 	srand(time(NULL));
+
+	/* Dump core on floating point exceptions */
+	feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
 
 	GREATEST_MAIN_BEGIN();
 

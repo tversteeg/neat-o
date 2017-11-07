@@ -86,12 +86,89 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
 
 static void neat_genome_add_layer(struct neat_genome *genome, int innovation)
 {
+	size_t i, total_weights;
+
 	assert(genome);
-
+	assert(genome->net);
+	
 	genome->net = nn_ffnet_add_hidden_layer(genome->net, 1.0);
+	assert(genome->net);
 
+	/* First realloc the innovation lists to the new size */
 	neat_genome_allocate_innovations(genome, innovation);
+
+	/* Then set all the innovations that are zero to the current innovation
+	 * so the last step can clear the unused ones
+	 */
+	total_weights = genome->ninnov_weights;
+	for(i = 0; i < total_weights; i++){
+		if(genome->innov_weight[i] != 0){
+			genome->innov_weight[i] = innovation;
+		}
+	}
+
+	/* Finally clear all the innovations that aren't used (where for example
+	 * the weight is zero)
+	 */
 	neat_genome_zeroify_innovations(genome);
+}
+
+static void neat_genome_add_neuron(struct neat_genome *genome,
+				   int innovation,
+				   enum nn_activation default_hidden,
+				   enum nn_activation default_output)
+{
+	struct nn_ffnet *n;
+	size_t i, layer, start_offset;
+
+	assert(genome);
+	assert(genome->net);
+
+	n = genome->net;
+	assert(n->nhiddens > 0);
+
+	/* Add + 1 to the selection of the layer so a new one can be created */
+	layer = rand() % (n->nhidden_layers + 1);
+	if(layer >= n->nhidden_layers){
+		neat_genome_add_layer(genome, innovation);
+		/* Make sure to reassign the pointer since adding a layer
+		 * creates a new network
+		 */
+		n = genome->net;
+	}
+
+	/* Start at the begin of the layer for the neurons */
+	start_offset = n->ninputs + layer * n->nhiddens;
+
+	/* Add a random offset so not the same vertical layer will be chosen
+	 * every time
+	 */
+	start_offset += rand() % n->nhiddens;
+
+	/* Find the first disconnected layer starting from the selected layer
+	 * and set the weight value to a random previous neuron
+	 */
+	for(i = start_offset; i < n->nneurons; i++){
+		size_t activ_offset;
+		char *activ;
+
+		activ_offset = i - n->ninputs;
+		activ = n->activation + activ_offset;
+		if(*activ == NN_ACTIVATION_PASSTHROUGH){
+			if(layer == n->nhidden_layers){
+				/* Set the output activation if it's the last
+				 * layer
+				 */
+				*activ = default_output;
+			}else{
+				*activ = default_hidden;
+			}
+			genome->innov_activ[activ_offset] = innovation;
+			genome->used_activs++;
+
+			return;
+		}
+	}
 }
 
 static void neat_genome_add_link(struct neat_genome *genome, int innovation)
@@ -132,64 +209,6 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 	}
 }
 
-static void neat_genome_add_neuron(struct neat_genome *genome,
-				   int innovation,
-				   enum nn_activation default_hidden,
-				   enum nn_activation default_output)
-{
-	struct nn_ffnet *n;
-	size_t i, layer, start_offset;
-
-	assert(genome);
-	assert(genome->net);
-
-	n = genome->net;
-
-	/* Add + 1 to the selection of the layer so a new one can be created */
-	if(n->nhidden_layers == 0){
-		layer = 0;
-		neat_genome_add_layer(genome, innovation);
-	}else{
-		layer = rand() % (n->nhidden_layers + 1);
-		if(layer >= n->nhidden_layers){
-			neat_genome_add_layer(genome, innovation);
-		}
-	}
-
-	/* Start at the begin of the layer for the neurons */
-	start_offset = n->ninputs + layer * n->nhiddens;
-
-	/* Adda random offset so not the same vertical layer will be chosen
-	 * every time
-	 */
-	start_offset += rand() % n->nhiddens;
-
-	/* Find the first disconnected layer starting from the selected layer
-	 * and set the weight value to a random previous neuron
-	 */
-	for(i = start_offset; i < n->nneurons; i++){
-		size_t activ_offset;
-		char *activ;
-
-		activ_offset = i - n->ninputs;
-		activ = n->activation + activ_offset;
-		if(*activ == NN_ACTIVATION_PASSTHROUGH){
-			if(layer == n->nhidden_layers){
-				/* Set the output activation if it's the last
-				 * layer
-				 */
-				*activ = default_output;
-			}else{
-				*activ = default_hidden;
-			}
-			genome->innov_activ[activ_offset] = innovation;
-			genome->used_activs++;
-
-			return;
-		}
-	}
-}
-
 static void neat_genome_mutate_activation(struct neat_genome *genome,
 					  int innovation)
 {
@@ -210,6 +229,13 @@ static void neat_genome_mutate_activation(struct neat_genome *genome,
 		new_activation = (new_activation + 1) % _NN_ACTIVATION_COUNT;
 	}
 
+	/* A change from passthrough to another type of activation counts as
+	 * using it
+	 */
+	if(genome->net->activation[random_activ] == NN_ACTIVATION_PASSTHROUGH){
+		genome->used_activs++;
+	}
+
 	genome->net->activation[random_activ] = new_activation;
 	genome->innov_activ[random_activ] = innovation;
 }
@@ -225,6 +251,8 @@ static void neat_genome_mutate_weight(struct neat_genome *genome,
 	if(genome->used_weights == 0){
 		return;
 	}
+
+	//TODO check why used_weights is always 0
 
 	select_weight_offset = rand() % genome->used_weights;
 
