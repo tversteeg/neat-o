@@ -136,12 +136,12 @@ static void draw_weight(cairo_t *cr,
 {
 	cairo_save(cr);
 	if(value < 0.001 && value > -0.001){
-		cairo_set_source_rgb(cr, 0.5, 0.5, 0.5);
-	}else if(value < 0.0){
-		value = 1.0 + value / 2.0;
+		cairo_set_source_rgb(cr, 0.7, 0.7, 0.7);
+	}else if(value > 0.0){
+		value = 1.0 - value / 2.0;
 		cairo_set_source_rgb(cr, value, 1.0, value);
 	}else{
-		value = value / 2.0;
+		value = 1.0 + value / 2.0;
 		cairo_set_source_rgb(cr, 1.0, value, value);
 	}
 	cairo_move_to (cr, startx, starty);
@@ -532,8 +532,8 @@ int main(int argc, char *argv[])
 	 */
 	//config.genome_add_neuron_mutation_probability = 0.01;
 
-	size_t size = 3;
-	net = nn_ffnet_create(size, size, size, 0);
+	size_t size = 4;
+	net = nn_ffnet_create(size - 1, size, size, 1);
 	for(size_t i = 0; i < size; i++){
 		net->weight[i * (size + 2) + 1] = 2.0f;
 	}
@@ -544,10 +544,7 @@ int main(int argc, char *argv[])
 
 	nn_ffnet_set_bias(net, 0.0);
 
-	net = nn_ffnet_add_hidden_layer(net, 2.0f);
-	net = nn_ffnet_add_hidden_layer(net, 2.0f);
-	//TODO fix adding of this layer
-	net = nn_ffnet_add_hidden_layer(net, 2.0f);
+	//net = nn_ffnet_add_hidden_layer(net, 2.0f);
 
 	srand(time(NULL));
 

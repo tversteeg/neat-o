@@ -72,14 +72,15 @@ static void nn_ffnet_set_pointers(struct nn_ffnet *net)
 static float *nn_ffnet_weight_at_hidden_layer(struct nn_ffnet *net,
 					      size_t layer)
 {
-	size_t input_offset;
+	size_t input_offset, hidden_offset;
 
 	assert(net);
 	assert(layer < net->nhidden_layers);
 
 	input_offset = (net->ninputs + 1) * net->nhiddens;
+	hidden_offset = (net->nhiddens + 1) * net->nhiddens * layer;
 
-	return net->weight + input_offset + (net->nhiddens + 1) * layer;
+	return net->weight + input_offset + hidden_offset;
 }
 
 static size_t nn_ffnet_hidden_weights(size_t input_count,
@@ -235,7 +236,7 @@ void nn_ffnet_destroy(struct nn_ffnet *net)
 struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 {
 	struct nn_ffnet *new;
-	size_t new_layer, nweights_per_layer, noutput_weights, nnew_weights;
+	size_t new_layer, noutput_weights;
 	float *new_weight_finish, *new_weight;
 
 	assert(net);
@@ -276,14 +277,11 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 	       net->weight + net->nweights - noutput_weights,
 	       sizeof(float) * noutput_weights);
 
-	/* Find where the location and amount of the new empty weights */
-	nnew_weights = new->nweights - net->nweights;
-
 	/* Destroy the old one */
 	nn_ffnet_destroy(net);
 
-	nweights_per_layer = new->nhiddens + 1;
 	new_layer = new->nhidden_layers - 1;
+	/* Get the starting weight */
 	if(new_layer == 0){
 		new_weight = new->weight;
 	}else{
@@ -291,14 +289,19 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 							     new_layer - 1);
 	}
 
+	/* Get the starting weight of the next layer */
+	new_weight_finish = nn_ffnet_weight_at_hidden_layer(new, new_layer);
+
 	/* Skip the bias */
 	new_weight++;
 
-	new_weight_finish = new_weight + nnew_weights;
-	/* Set each weight directly connected to the node before it */
 	do{
 		*new_weight = weight;
-	}while((new_weight += nweights_per_layer + 1) < new_weight_finish);
+
+		/* Increment the pointer with an additional 1 to make sure every
+		 * node gets connected to the same one on the previous layer
+		 */
+	}while((new_weight += new->nhiddens + 2) < new_weight_finish);
 
 	return new;
 }
