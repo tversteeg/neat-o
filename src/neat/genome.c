@@ -86,10 +86,9 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
 
 static void neat_genome_add_layer(struct neat_genome *genome, int innovation)
 {
-	float weight;
+	assert(genome);
 
-	weight = (float)rand() / (float)(RAND_MAX / 4.0f) - 2.0f;
-	genome->net = nn_ffnet_add_hidden_layer(genome->net, weight);
+	genome->net = nn_ffnet_add_hidden_layer(genome->net, 1.0);
 
 	neat_genome_allocate_innovations(genome, innovation);
 	neat_genome_zeroify_innovations(genome);
@@ -102,10 +101,6 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 	assert(genome);
 	assert(genome->net);
 
-	/* TODO change to finding new empty links with passthrough and
-	 * connecting those
-	 */
-
 	/* Select a random available weight */
 	available = genome->net->nweights - genome->used_weights;
 	/* Do nothing if there are no more available weights */
@@ -113,14 +108,21 @@ static void neat_genome_add_link(struct neat_genome *genome, int innovation)
 		return;
 	}
 
+	/* Get a random number between the start and the end of all available
+	 * weights
+	 */
 	select_weight_offset = rand() % available;
 
 	/* Loop over the available weight to find the randomly selected one */
 	for(i = 0; i < genome->net->nweights; i++){
+		/* Skip over unavailable weights */
 		if(genome->net->weight[i] != 0.0f){
 			continue;
 		}
 
+		/* Count down available weights until the randomly selected
+		 * one is found
+		 */
 		if(!select_weight_offset--){
 			genome->net->weight[i] = neat_random_two();
 			genome->innov_weight[i] = innovation;
@@ -136,7 +138,7 @@ static void neat_genome_add_neuron(struct neat_genome *genome,
 				   enum nn_activation default_output)
 {
 	struct nn_ffnet *n;
-	size_t layer, i;
+	size_t i, layer, start_offset;
 
 	assert(genome);
 	assert(genome->net);
@@ -147,45 +149,45 @@ static void neat_genome_add_neuron(struct neat_genome *genome,
 	if(n->nhidden_layers == 0){
 		layer = 0;
 		neat_genome_add_layer(genome, innovation);
-		/* Update the pointer */
-		n = genome->net;
 	}else{
 		layer = rand() % (n->nhidden_layers + 1);
 		if(layer >= n->nhidden_layers){
 			neat_genome_add_layer(genome, innovation);
-			return;
 		}
 	}
+
+	/* Start at the begin of the layer for the neurons */
+	start_offset = n->ninputs + layer * n->nhiddens;
+
+	/* Adda random offset so not the same vertical layer will be chosen
+	 * every time
+	 */
+	start_offset += rand() % n->nhiddens;
 
 	/* Find the first disconnected layer starting from the selected layer
 	 * and set the weight value to a random previous neuron
 	 */
-	for(i = n->ninputs + layer * n->nhiddens; i < n->nneurons; i++){
-		if(!nn_ffnet_neuron_is_connected(n, i)){
-			size_t start, weight_index;
+	for(i = start_offset; i < n->nneurons; i++){
+		size_t activ_offset;
+		char *activ;
 
-			/* Set the weight connecting the previous neuron */
-			start = nn_ffnet_get_weight_to_neuron(n, i);
-			weight_index = start + (rand() % n->nhiddens);
-
-			n->weight[weight_index] = neat_random_two();
-			genome->innov_weight[weight_index] = innovation;
-			genome->used_weights++;
-
-			/* Set the output activation if it's the last layer */
+		activ_offset = i - n->ninputs;
+		activ = n->activation + activ_offset;
+		if(*activ == NN_ACTIVATION_PASSTHROUGH){
 			if(layer == n->nhidden_layers){
-				n->activation[i - n->ninputs] = default_output;
+				/* Set the output activation if it's the last
+				 * layer
+				 */
+				*activ = default_output;
 			}else{
-				n->activation[i - n->ninputs] = default_hidden;
+				*activ = default_hidden;
 			}
-			genome->innov_activ[i - n->ninputs] = innovation;
+			genome->innov_activ[activ_offset] = innovation;
 			genome->used_activs++;
+
 			return;
 		}
 	}
-
-	/* No available nodes found, just add a new link */
-	neat_genome_add_link(genome, innovation);
 }
 
 static void neat_genome_mutate_activation(struct neat_genome *genome,
@@ -388,7 +390,7 @@ void neat_genome_mutate(struct neat_genome *genome,
 	}else{
 		random = (float)rand() / (float)RAND_MAX;
 	}
-	if(random < config.genome_add_neuron_mutation_probability){
+	if(random <= config.genome_add_neuron_mutation_probability){
 		neat_genome_add_neuron(genome,
 				       innovation,
 				       config.genome_default_hidden_activation,

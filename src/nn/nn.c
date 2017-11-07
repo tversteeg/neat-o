@@ -236,7 +236,7 @@ void nn_ffnet_destroy(struct nn_ffnet *net)
 struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 {
 	struct nn_ffnet *new;
-	size_t new_layer, noutput_weights;
+	size_t new_layer, nweights_per_neuron, noutput_weights;
 	float *new_weight_finish, *new_weight;
 
 	assert(net);
@@ -284,9 +284,11 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 	/* Get the starting weight */
 	if(new_layer == 0){
 		new_weight = new->weight;
+		nweights_per_neuron = new->ninputs + 1;
 	}else{
 		new_weight = nn_ffnet_weight_at_hidden_layer(new,
 							     new_layer - 1);
+		nweights_per_neuron = new->nhiddens + 1;
 	}
 
 	/* Get the starting weight of the next layer */
@@ -301,7 +303,7 @@ struct nn_ffnet *nn_ffnet_add_hidden_layer(struct nn_ffnet *net, float weight)
 		/* Increment the pointer with an additional 1 to make sure every
 		 * node gets connected to the same one on the previous layer
 		 */
-	}while((new_weight += new->nhiddens + 2) < new_weight_finish);
+	}while((new_weight += nweights_per_neuron + 1) < new_weight_finish);
 
 	return new;
 }

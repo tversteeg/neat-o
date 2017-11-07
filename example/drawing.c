@@ -8,6 +8,8 @@
 
 #define POP_SIZE 300
 
+//#define SHOW_STATIC_NET
+
 static struct neat_config config;
 
 static neat_t neat = NULL;
@@ -31,8 +33,9 @@ static size_t worst = SIZE_MAX, best = SIZE_MAX;
 static guint renderx = 1, rendery = 1;
 static guint rendertick = 0;
 
-/* TODO remove */
+#ifdef SHOW_STATIC_NET
 static struct nn_ffnet *net;
+#endif
 
 static void setup_neat(void)
 {
@@ -187,11 +190,16 @@ static void draw_neat_network(cairo_t *cr,
 	cairo_stroke(cr);
 
 	const struct nn_ffnet *n;
+
+#ifdef SHOW_STATIC_NET
 	if(network != 0){
+#endif
 		n = neat_get_network(neat, network);
+#ifdef SHOW_STATIC_NET
 	}else{
 		n = net;
 	}
+#endif
 
 	float *neuron = n->output;
 	float *weight = n->weight;
@@ -532,11 +540,9 @@ int main(int argc, char *argv[])
 	 */
 	//config.genome_add_neuron_mutation_probability = 0.01;
 
+#ifdef SHOW_STATIC_NET
 	size_t size = 4;
-	net = nn_ffnet_create(size - 1, size, size, 1);
-	for(size_t i = 0; i < size; i++){
-		net->weight[i * (size + 2) + 1] = 2.0f;
-	}
+	net = nn_ffnet_create(size + 2, size, size - 2, 0);
 
 	nn_ffnet_set_activations(net,
 				 NN_ACTIVATION_RELU,
@@ -544,7 +550,8 @@ int main(int argc, char *argv[])
 
 	nn_ffnet_set_bias(net, 0.0);
 
-	//net = nn_ffnet_add_hidden_layer(net, 2.0f);
+	net = nn_ffnet_add_hidden_layer(net, 1.0f);
+#endif
 
 	srand(time(NULL));
 
