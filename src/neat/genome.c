@@ -252,8 +252,6 @@ static void neat_genome_mutate_weight(struct neat_genome *genome,
 		return;
 	}
 
-	//TODO check why used_weights is always 0
-
 	select_weight_offset = rand() % genome->used_weights;
 
 	/* Loop over the available weight to find the randomly selected one */
@@ -333,7 +331,7 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	new = calloc(1, sizeof(struct neat_genome));
 	assert(new);
 
-	new->fitness = genome->fitness;
+	memcpy(new, genome, sizeof(struct neat_genome));
 
 	new->net = nn_ffnet_copy(genome->net);
 	assert(new->net);
