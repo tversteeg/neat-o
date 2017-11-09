@@ -323,7 +323,7 @@ static void neat_remove_duplicate_species(struct neat_pop *p)
 			struct neat_genome *r1, *r2;
 
 			s2 = p->species[j];
-			
+
 			/* Ignore the dead species */
 			if(!s2->active){
 				continue;
@@ -337,9 +337,9 @@ static void neat_remove_duplicate_species(struct neat_pop *p)
 			r2 = p->genomes[neat_species_get_representant(s2)];
 
 			if(!neat_genome_is_compatible(r1,
-						     r2,
-						     compatibility_treshold,
-						     p->nspecies)){
+						      r2,
+						      compatibility_treshold,
+						      p->nspecies)){
 				continue;
 			}
 
@@ -444,7 +444,7 @@ static void neat_respeciate_genomes(struct neat_pop *p)
 		neat_remove_genome_from_species(p, i);
 
 		/* Then assign it to a existing species or create a new species
-		 */
+		*/
 		neat_speciate_genome(p, i);
 	}
 }
@@ -489,7 +489,6 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 	genitor = SIZE_MAX;
 
 	random = (float)rand() / (float)RAND_MAX;
-	/* TODO fix interspecies crossover not ignoring inactive species */
 	if(random < p->conf.interspecies_crossover_probability && false){
 		parent2_species = neat_interspecies_species(p, s);
 		if(parent2_species != NULL){
@@ -500,7 +499,7 @@ static struct neat_genome *neat_crossover_get_parent2(struct neat_pop *p,
 							      parent2_species);
 		}
 	}
-	
+
 	/* If there is no interspecies crossover or if no suitable species
 	 * could be found
 	 */
@@ -632,14 +631,11 @@ struct neat_config neat_get_default_config(void)
 	conf.species_crossover_probability = 0.6;
 	conf.interspecies_crossover_probability = 0.2;
 
-	conf.genome_weight_mutation_probability = 1.0;
-	/*
 	conf.genome_add_neuron_mutation_probability = 0.1;
 	conf.genome_add_link_mutation_probability = 0.3;
 	conf.genome_change_activation_probability = 0.1;
 	conf.genome_weight_mutation_probability = 0.5;
 	conf.genome_all_weights_mutation_probability = 0.02;
-	*/
 
 	conf.genome_minimum_ticks_alive = 100;
 	conf.genome_compatibility_treshold = 0.2;

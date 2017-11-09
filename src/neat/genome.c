@@ -86,7 +86,7 @@ static size_t neat_genome_allocate_innovations(struct neat_genome *genome,
 
 static void neat_genome_add_layer(struct neat_genome *genome, int innovation)
 {
-	size_t i, total_weights;
+	size_t i;
 
 	assert(genome);
 	assert(genome->net);
@@ -100,8 +100,7 @@ static void neat_genome_add_layer(struct neat_genome *genome, int innovation)
 	/* Then set all the innovations that are zero to the current innovation
 	 * so the last step can clear the unused ones
 	 */
-	total_weights = genome->ninnov_weights;
-	for(i = 0; i < total_weights; i++){
+	for(i = 0; i < genome->ninnov_weights; i++){
 		if(genome->innov_weight[i] != 0){
 			genome->innov_weight[i] = innovation;
 		}
@@ -331,12 +330,9 @@ struct neat_genome *neat_genome_copy(const struct neat_genome *genome)
 	new = calloc(1, sizeof(struct neat_genome));
 	assert(new);
 
-	memcpy(new, genome, sizeof(struct neat_genome));
-
 	new->net = nn_ffnet_copy(genome->net);
 	assert(new->net);
 
-	new->innov_weight = NULL;
 	bytes = neat_genome_allocate_innovations(new, 1);
 	memcpy(new->innov_weight, genome->innov_weight, bytes);
 	assert(new->innov_weight);
