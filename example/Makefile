@@ -1,19 +1,9 @@
-NAME=neat-drawing
+all: gtk-visualization flappy-bird
 
-CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
-       -std=c99 -pedantic -O3 -I../include \
-       `pkg-config --cflags gtk+-3.0`
-LDLIBS=-lm \
-       `pkg-config --libs gtk+-3.0`
+.PHONY: gtk-visualization
+gtk-visualization: $(LIB)
+	"$(MAKE)" -C gtk-visualization LIB="../$(LIB)"
 
-SRCS=drawing.c
-OBJS=$(SRCS:.c=.o)
-
-all: $(NAME)
-
-$(NAME): $(OBJS) ${LIB}
-	$(CC) $(LDFLAGS) -o $@ -L. $^ $(LDLIBS)
-
-.PHONY: clean
-clean:
-	$(RM) $(OBJS) $(NAME)
+.PHONY: flappy-bird
+flappy-bird: $(LIB)
+	"$(MAKE)" -C flappy-bird LIB="../$(LIB)"

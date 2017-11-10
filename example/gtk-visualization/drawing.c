@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
 	/* We only rarely want to add another nouron because a XOR network
 	 * should work just fine with 1 hidden layer
 	 */
-	//config.genome_add_neuron_mutation_probability = 0.01;
+	config.genome_add_neuron_mutation_probability = 0.01;
 
 #ifdef SHOW_STATIC_NET
 	size_t size = 4;
