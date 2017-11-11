@@ -1,10 +1,8 @@
 NAME=neat-flappy
 
 CFLAGS=-g -Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -Werror \
-       -std=c99 -pedantic -O3 -I../../include \
-       `pkg-config --cflags gtk+-3.0`
-LDLIBS=-lm \
-       `pkg-config --libs gtk+-3.0`
+       -std=gnu90 -pedantic -O3 -I../../include
+LDLIBS=-lm -lncurses
 
 SRCS=flappy.c
 OBJS=$(SRCS:.c=.o)
