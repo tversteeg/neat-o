@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <time.h>
+#include <stdbool.h>
 
 #include <unistd.h>
 #include <ncurses.h>
@@ -20,6 +21,16 @@
 
 #define POPULATION 100
 
+#define PIPES 100
+
+struct pipe{
+	/* The x position and the y position of the center of the opening */
+	int x, center;
+
+	/* Size of the opening */
+	float opening_height;
+};
+
 struct bird{
 	/* Height and time since last "key press" */
 	int last_height, last_time;
@@ -29,9 +40,12 @@ struct bird{
 };
 
 static struct bird birds[POPULATION];
+static struct pipe pipes[PIPES];
 
 static struct neat_config config;
 static neat_t neat;
+
+static int cam_x;
 
 static int get_bird_height(struct bird b)
 {
@@ -65,6 +79,31 @@ static struct bird get_farthest_bird(void)
 	return farthest_bird;
 }
 
+static void draw_pipes(int middle)
+{
+	size_t i;
+
+	for(i = 0; i < PIPES; i++){
+		struct pipe p;
+		int real_x, height;
+
+		p = pipes[i];
+		
+		real_x = p.x - middle;
+		/* Ignore the pipe if it's not in the screen */
+		if(real_x < 1 || real_x >= WIDTH - 1){
+			continue;
+		}
+
+		/* Draw top part of the pipe */
+    		mvvline(1, real_x, 0, p.center - HEIGHT * p.opening_height - 1);
+
+		/* Draw bottom part of the pipe */
+		height = p.center + HEIGHT * p.opening_height;
+    		mvvline(height, real_x, 0, (HEIGHT - 2) - height);
+	}
+}
+
 static void draw_birds(void)
 {
 	size_t i;
@@ -72,13 +111,20 @@ static void draw_birds(void)
 	struct bird farthest;
 
 	farthest = get_farthest_bird();
-	middle = farthest.x - WIDTH / 2;
+	if(farthest.x > cam_x){
+		cam_x = farthest.x;
+	}else{
+		cam_x--;
+	}
+	middle = cam_x - WIDTH / 2;
+
+	draw_pipes(middle);
 
 	/* Draw the ground */
 	mvhline(HEIGHT - 2, 1, 0, WIDTH - 2);
 
 	/* Draw a moving figure to get a sense of speed */
-    	mvaddch(HEIGHT - 2, (WIDTH - 1) - farthest.x % (WIDTH - 2), ACS_BTEE);
+    	mvaddch(HEIGHT - 2, (WIDTH - 1) - cam_x % (WIDTH - 2), ACS_BTEE);
 
 	for(i = 0; i < POPULATION; i++){
 		struct bird *b;
@@ -141,6 +187,40 @@ static void run_network_on_bird(struct bird *b, size_t index)
 	neat_set_fitness(neat, index, fitness);
 }
 
+static bool bird_collides_with_pipe(struct bird b)
+{
+	size_t i;
+
+	for(i = 0; i < PIPES; i++){
+		struct pipe p;
+		int bird_height;
+
+		p = pipes[i];
+
+		/* If the pipe and the bird are not on the same line there is
+		 * no collision
+		 */
+		if(p.x != b.x){
+			continue;
+		}
+
+		bird_height = get_bird_height(b);
+		
+		/* If the bird collides with top part */
+		if(bird_height > p.center + HEIGHT * p.opening_height){
+			return true;
+		}
+
+		/* If the bird collides with bottom part */
+		if(bird_height < p.center - HEIGHT * p.opening_height){
+			return true;
+		}
+	}
+
+	/* No collision found */
+	return false;
+}
+
 static void population_tick(void)
 {
 	size_t i;
@@ -160,6 +240,11 @@ static void population_tick(void)
 			reset_bird(b);
 		}
 
+		/* Reset the bird if it collides with the pipes */
+		if(bird_collides_with_pipe(*b)){
+			reset_bird(b);
+		}
+
 		if(b->last_time > 10){
 			run_network_on_bird(b, i);
 		}
@@ -168,6 +253,25 @@ static void population_tick(void)
 	}
 
 	neat_epoch(neat, NULL);
+}
+
+static void initialize_pipes(void)
+{
+	size_t i;
+
+	for(i = 0; i < PIPES; i++){
+		int x;
+
+		x = i * 20 + 100;
+
+		pipes[i].x = x;
+
+		/* Set the center between 1/4 and 3/4 of the height */
+		pipes[i].center = HEIGHT / 4 + rand() % (HEIGHT / 2);
+		
+		/* TODO change this */
+		pipes[i].opening_height = 0.25f - (i / 300.0f);
+	}
 }
 
 static void initialize_population(void)
@@ -225,6 +329,9 @@ int main(int argc, char *argv[])
 	initialize_ncurses();
 
 	initialize_population();
+	initialize_pipes();
+
+	cam_x = 0;
 
 	run = true;
 	while(run){
