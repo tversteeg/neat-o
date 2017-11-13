@@ -140,21 +140,17 @@ static void draw_birds(void)
 			continue;
 		}
 
-		if(b->last_height > height){
-			/* Draw a normal bird if it's lower than the last height
-			 */
-			if(real_x > 1){
-				mvprintw(real_y, real_x - 1, "\\");
-			}
-			mvprintw(real_y, real_x, "o/");
-		}else{
-			/* Draw a flapping bird if it's higher than the last
-			 * height
-			 */
+		/* Draw a bird depending on if it just flapped */
+		if(b->last_time < 10 && (b->last_time / 4) % 2 == 0){
 			if(real_x > 1){
 				mvprintw(real_y, real_x - 1, "-");
 			}
 			mvprintw(real_y, real_x, "o-");
+		}else{
+			if(real_x > 1){
+				mvprintw(real_y, real_x - 1, "\\");
+			}
+			mvprintw(real_y, real_x, "o/");
 		}
 	}
 
@@ -332,11 +328,11 @@ static void initialize_population(void)
 	config = neat_get_default_config();
 	config.network_inputs = 4;
 	config.network_outputs = 1;
-	config.network_hidden_nodes = 6;
+	config.network_hidden_nodes = 10;
 	config.population_size = POPULATION;
 
-	config.genome_minimum_ticks_alive = 50;
-	config.minimum_time_before_replacement = 200;
+	config.genome_minimum_ticks_alive = 200;
+	config.minimum_time_before_replacement = 50;
 
 	neat = neat_create(config);
 	assert(neat);
