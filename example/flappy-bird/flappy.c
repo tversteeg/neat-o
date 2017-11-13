@@ -99,44 +99,38 @@ static void draw_pipes(int middle)
 
 		/* Draw top part of the pipe */
 		height = HEIGHT - p.center - HEIGHT * p.opening_height;
-    		mvvline(1, real_x, 0, height - 2);
+    		mvvline(1, real_x, 0, height - 1);
 
 		/* Draw bottom part of the pipe */
 		height = HEIGHT - p.center + HEIGHT * p.opening_height;
-    		mvvline(height, real_x, 0, (HEIGHT - 2) - height);
+    		mvvline(height, real_x, 0, HEIGHT - height);
 	}
 }
 
 static void draw_birds(void)
 {
 	size_t i;
-	int middle;
+	int middle, farthest_pipes;
 	struct bird farthest;
 
 	farthest = get_farthest_bird();
 	if(farthest.x > cam_x){
 		cam_x = farthest.x;
-	}else{
+	}else if(cam_x - farthest.x > WIDTH / 2){
 		cam_x--;
 	}
 	middle = cam_x - WIDTH / 2;
 
-	draw_pipes(middle);
-
-	/* Draw the ground */
-	mvhline(HEIGHT - 2, 1, 0, WIDTH - 2);
-
-	/* Draw a moving figure to get a sense of speed */
-    	mvaddch(HEIGHT - 2, (WIDTH - 1) - cam_x % (WIDTH - 2), ACS_BTEE);
-
 	for(i = 0; i < POPULATION; i++){
 		struct bird *b;
-		int real_x, real_y;
+		int real_x, real_y, height;
 
 		b = birds + i;
+
+		height = get_bird_height(*b);
 		
 		real_x = b->x - middle;
-		real_y = HEIGHT - get_bird_height(*b) - 2;
+		real_y = HEIGHT - height - 1;
 
 		/* Ignore the bird if it's not in the screen */
 		if(real_x < 1 || real_x >= WIDTH - 1){
@@ -146,13 +140,31 @@ static void draw_birds(void)
 			continue;
 		}
 
-		mvprintw(real_y, real_x, "o");
+		if(b->last_height > height){
+			/* Draw a normal bird if it's lower than the last height
+			 */
+			if(real_x > 1){
+				mvprintw(real_y, real_x - 1, "\\");
+			}
+			mvprintw(real_y, real_x, "o/");
+		}else{
+			/* Draw a flapping bird if it's higher than the last
+			 * height
+			 */
+			if(real_x > 1){
+				mvprintw(real_y, real_x - 1, "-");
+			}
+			mvprintw(real_y, real_x, "o-");
+		}
 	}
 
-	mvprintw(HEIGHT + 1, 1, "Current: %d", farthest.x);
+	draw_pipes(middle);
 
-	if(farthest.x > best_distance){
-		best_distance = farthest.x;
+	farthest_pipes = farthest.x / (PIPE_DISTANCE - 1);
+	mvprintw(HEIGHT + 1, 1, "Current: %d", farthest_pipes);
+
+	if(farthest_pipes > best_distance){
+		best_distance = farthest_pipes;
 	}
 
 	mvprintw(HEIGHT + 2, 1, "Best: %d", best_distance);
@@ -162,7 +174,8 @@ static void reset_bird(struct bird *b)
 {
 	assert(b);
 
-	b->last_height = HEIGHT / 2;
+	/* Make the height start between 1/4 and 3/4 of the screen */
+	b->last_height = HEIGHT / 4 + rand() % (HEIGHT / 2);
 	b->last_time = 0;
 	b->x = 0;
 }
