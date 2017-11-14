@@ -49,6 +49,8 @@ static neat_t neat;
 
 static int cam_x, best_distance;
 
+static WINDOW *window;
+
 static int get_bird_height(struct bird b)
 {
 	float velocity_since_last, gravity_since_last, time_squared;
@@ -99,11 +101,11 @@ static void draw_pipes(int middle)
 
 		/* Draw top part of the pipe */
 		height = HEIGHT - p.center - HEIGHT * p.opening_height;
-    		mvvline(1, real_x, 0, height - 1);
+    		mvwvline(window, 1, real_x, 0, height - 1);
 
 		/* Draw bottom part of the pipe */
 		height = HEIGHT - p.center + HEIGHT * p.opening_height;
-    		mvvline(height, real_x, 0, HEIGHT - height);
+    		mvwvline(window, height, real_x, 0, HEIGHT - height);
 	}
 }
 
@@ -143,14 +145,14 @@ static void draw_birds(void)
 		/* Draw a bird depending on if it just flapped */
 		if(b->last_time < 10 && (b->last_time / 4) % 2 == 0){
 			if(real_x > 1){
-				mvprintw(real_y, real_x - 1, "-");
+				mvwprintw(window, real_y, real_x - 1, "-");
 			}
-			mvprintw(real_y, real_x, "o-");
+			mvwprintw(window, real_y, real_x, "o-");
 		}else{
 			if(real_x > 1){
-				mvprintw(real_y, real_x - 1, "\\");
+				mvwprintw(window, real_y, real_x - 1, "\\");
 			}
-			mvprintw(real_y, real_x, "o/");
+			mvwprintw(window, real_y, real_x, "o/");
 		}
 	}
 
@@ -350,18 +352,8 @@ static void initialize_ncurses(void)
 	noecho();
 	curs_set(0);
 	timeout(0);
-}
 
-static void draw_ncurses_rectangle(int y1, int x1, int y2, int x2)
-{
-    mvhline(y1, x1, 0, x2-x1);
-    mvhline(y2, x1, 0, x2-x1);
-    mvvline(y1, x1, 0, y2-y1);
-    mvvline(y1, x2, 0, y2-y1);
-    mvaddch(y1, x1, ACS_ULCORNER);
-    mvaddch(y2, x1, ACS_LLCORNER);
-    mvaddch(y1, x2, ACS_URCORNER);
-    mvaddch(y2, x2, ACS_LRCORNER);
+	window = newwin(HEIGHT, WIDTH, 0, 0);
 }
 
 int main(int argc, char *argv[])
@@ -390,19 +382,26 @@ int main(int argc, char *argv[])
 				run = false;
 		}
 
-		clear();
-
 		population_tick();
 
-		draw_ncurses_rectangle(0, 0, HEIGHT, WIDTH);
-		draw_birds();
+		/* Clear the window area */
+		werase(window);
 
+		draw_birds();
+		
+		/* Draw the window edges */
+		box(window, 0, 0);
+
+		/* Draw everything */
+		wrefresh(window);
 		refresh();
 
 		usleep(1000000u / FPS);
 	}
 
 	/* Close ncurses */
+	delwin(window);
+
 	endwin();
 
 	return 0;
